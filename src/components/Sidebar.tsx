@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import { Avatar } from './Avatar';
+import { createClient } from '@/lib/supabase/client';
 
 const NAV_ITEMS = [
   {
@@ -86,17 +88,44 @@ const NAV_ITEMS = [
 interface SidebarProps {
   userName: string;
   userCargo: string;
+  logoUrl?: string | null;
 }
 
-export function Sidebar({ userName, userCargo }: SidebarProps) {
+export function Sidebar({ userName, userCargo, logoUrl }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [menuAberto, setMenuAberto] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const visibleItems = NAV_ITEMS.filter((item) => !item.hideFor?.includes(userCargo));
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuAberto(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  }
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-gray-200 bg-card">
       <div className="px-5 py-6">
-        <h1 className="text-lg font-bold text-gray-900">EazyClick</h1>
+        {logoUrl && (
+          <div className="mb-3 inline-flex h-16 max-w-[200px] items-center justify-center overflow-hidden rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo enviada pelo admin_master via upload, URL dinâmica de Storage */}
+            <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+          </div>
+        )}
+        <h1 className="text-lg font-bold text-foreground">EazyClick</h1>
         <p className="text-xs text-gray-500">CRM</p>
       </div>
 
@@ -110,7 +139,7 @@ export function Sidebar({ userName, userCargo }: SidebarProps) {
               className={clsx(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
                 isActive
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-primary text-white'
                   : 'text-gray-600 hover:bg-gray-100'
               )}
             >
@@ -121,12 +150,38 @@ export function Sidebar({ userName, userCargo }: SidebarProps) {
         })}
       </nav>
 
-      <div className="flex items-center gap-3 border-t border-gray-200 px-4 py-4">
-        <Avatar name={userName} />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-gray-900">{userName}</p>
-          <p className="truncate text-xs capitalize text-gray-500">{userCargo.replace('_', ' ')}</p>
-        </div>
+      <div ref={menuRef} className="relative border-t border-gray-200 px-4 py-4">
+        {menuAberto && (
+          <div className="absolute bottom-full left-4 right-4 mb-2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+            >
+              <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                <path
+                  d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Sair
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => setMenuAberto((v) => !v)}
+          className="flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-gray-100"
+        >
+          <Avatar name={userName} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">{userName}</p>
+            <p className="truncate text-xs capitalize text-gray-500">{userCargo.replace('_', ' ')}</p>
+          </div>
+        </button>
       </div>
     </aside>
   );

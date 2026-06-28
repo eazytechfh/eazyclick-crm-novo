@@ -154,6 +154,7 @@ export interface Profile {
   email: string;
   cargo: Cargo;
   created_at: string;
+  desativado: boolean;
 }
 
 export interface AppSettings {

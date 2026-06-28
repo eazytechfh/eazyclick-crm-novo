@@ -17,7 +17,7 @@ export function KpiCard({ label, value, variation, dotColor = '#22c55e', childre
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
         <span className="text-sm text-gray-500">{label}</span>
       </div>
-      <div className="text-2xl font-bold text-gray-900">{value}</div>
+      <div className="text-2xl font-bold text-foreground">{value}</div>
       {typeof variation === 'number' && (
         <div
           className={clsx(

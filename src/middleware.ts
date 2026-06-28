@@ -36,7 +36,10 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // /produtos é o chat público de cadastro de produtos usado por clientes (sem login).
-  const isPublicRoute = pathname === '/login' || pathname.startsWith('/produtos');
+  // /api/* fica de fora do bloqueio aqui (ver comentário no topo do arquivo): cada rota valida
+  // sua própria sessão, e o chat público precisa chamar /api/produtos/webhook sem estar logado.
+  const isPublicRoute =
+    pathname === '/login' || pathname.startsWith('/produtos') || pathname.startsWith('/api/');
 
   if (!isAuthenticated && !isPublicRoute) {
     const redirectUrl = new URL('/login', request.url);

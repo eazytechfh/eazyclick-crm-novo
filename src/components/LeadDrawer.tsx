@@ -181,7 +181,7 @@ export function LeadDrawer({
           <div className="flex items-center gap-3">
             <Avatar name={lead.nome_lead} size={44} />
             <div>
-              <p className="text-base font-semibold text-gray-900">{lead.nome_lead}</p>
+              <p className="text-base font-semibold text-foreground">{lead.nome_lead}</p>
               <p className="text-sm text-gray-500">{lead.telefone}</p>
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span
@@ -240,7 +240,7 @@ export function LeadDrawer({
               </div>
               <div>
                 <p className="text-xs text-gray-500">Idade</p>
-                <p className="text-sm font-medium text-gray-900">{idade !== null ? `${idade} anos` : '—'}</p>
+                <p className="text-sm font-medium text-foreground">{idade !== null ? `${idade} anos` : '—'}</p>
               </div>
             </div>
           </section>
@@ -250,7 +250,7 @@ export function LeadDrawer({
               Score Serasa
             </h3>
             <div className="flex items-center justify-between">
-              <p className="text-3xl font-bold text-gray-900">{lead.score_serasa ?? '—'}</p>
+              <p className="text-3xl font-bold text-foreground">{lead.score_serasa ?? '—'}</p>
               <span
                 className="rounded-full px-3 py-1 text-xs font-medium"
                 style={{ backgroundColor: `${serasa.color}1a`, color: serasa.color }}
@@ -313,7 +313,7 @@ export function LeadDrawer({
               </div>
               <div>
                 <p className="text-xs text-gray-500">Origem</p>
-                <p className="text-sm font-medium text-gray-900">{lead.origem ?? '—'}</p>
+                <p className="text-sm font-medium text-foreground">{lead.origem ?? '—'}</p>
               </div>
             </div>
 
@@ -321,7 +321,7 @@ export function LeadDrawer({
               type="button"
               onClick={salvarCampos}
               disabled={salvandoCampos}
-              className="mt-3 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {salvandoCampos ? 'Salvando...' : 'Salvar alterações'}
             </button>
@@ -372,7 +372,7 @@ export function LeadDrawer({
               type="button"
               onClick={salvarObservacao}
               disabled={salvandoObservacao}
-              className="mt-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+              className="mt-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
             >
               {salvandoObservacao ? 'Salvando...' : 'Salvar observação'}
             </button>

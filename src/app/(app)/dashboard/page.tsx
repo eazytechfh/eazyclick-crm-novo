@@ -252,7 +252,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Visão Geral de Leads</h1>
+          <h1 className="text-2xl font-bold text-foreground">Visão Geral de Leads</h1>
           <p className="text-sm text-gray-500">
             {format(start, "dd 'de' MMM", { locale: ptBR })} – {format(end, "dd 'de' MMM", { locale: ptBR })}
             {updatedAt && (
@@ -297,7 +297,7 @@ export default function DashboardPage() {
               <div className="mt-3">
                 <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
                   <div
-                    className="h-full rounded-full bg-gray-900"
+                    className="h-full rounded-full bg-primary"
                     style={{ width: `${pctDentroExpediente.toFixed(0)}%` }}
                   />
                 </div>
@@ -309,15 +309,15 @@ export default function DashboardPage() {
           </div>
 
           <div className="rounded-xl bg-card p-5 shadow-sm">
-            <h2 className="mb-1 text-sm font-semibold text-gray-900">Tempo até Atendimento</h2>
-            <p className="text-2xl font-bold text-gray-900">
+            <h2 className="mb-1 text-sm font-semibold text-foreground">Tempo até Atendimento</h2>
+            <p className="text-2xl font-bold text-foreground">
               {tempoMedioAtendimentoMin !== null ? `${tempoMedioAtendimentoMin.toFixed(0)} min` : 'Sem dados'}
             </p>
             <p className="text-xs text-gray-500">Tempo médio entre a criação do lead e a primeira resposta registrada</p>
           </div>
 
           <div className="rounded-xl bg-card p-5 shadow-sm">
-            <h2 className="mb-4 text-sm font-semibold text-gray-900">Entrada de Leads</h2>
+            <h2 className="mb-4 text-sm font-semibold text-foreground">Entrada de Leads</h2>
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={entradaPorDia}>
                 <defs>
@@ -337,7 +337,7 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl bg-card p-5 shadow-sm">
-              <h2 className="mb-4 text-sm font-semibold text-gray-900">Leads por Vendedor</h2>
+              <h2 className="mb-4 text-sm font-semibold text-foreground">Leads por Vendedor</h2>
               <div className="space-y-3">
                 {leadsPorVendedor.map((item) => (
                   <button
@@ -367,7 +367,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="rounded-xl bg-card p-5 shadow-sm">
-              <h2 className="mb-4 text-sm font-semibold text-gray-900">Origem dos Leads</h2>
+              <h2 className="mb-4 text-sm font-semibold text-foreground">Origem dos Leads</h2>
               {origemDosLeads.length === 0 ? (
                 <p className="text-sm text-gray-400">Nenhum lead no período.</p>
               ) : (
@@ -395,7 +395,7 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl bg-card p-5 shadow-sm">
-              <h2 className="mb-4 text-sm font-semibold text-gray-900">Leads por Estágio</h2>
+              <h2 className="mb-4 text-sm font-semibold text-foreground">Leads por Estágio</h2>
               <div className="space-y-3">
                 {leadsPorEstagio.map((item) => (
                   <div key={item.estagio}>
@@ -418,7 +418,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="rounded-xl bg-card p-5 shadow-sm">
-              <h2 className="mb-4 text-sm font-semibold text-gray-900">Veículos Mais Procurados</h2>
+              <h2 className="mb-4 text-sm font-semibold text-foreground">Veículos Mais Procurados</h2>
               <div className="space-y-3">
                 {veiculosMaisProcurados.map((item) => (
                   <div key={item.veiculo}>

@@ -201,13 +201,13 @@ export default function LeadsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+          <h1 className="text-2xl font-bold text-foreground">Leads</h1>
           <p className="text-sm text-gray-500">{leadsFiltrados.length} lead(s) encontrado(s)</p>
         </div>
         <button
           type="button"
           onClick={exportarCsv}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           Exportar CSV
         </button>
@@ -219,7 +219,7 @@ export default function LeadsPage() {
           placeholder="Buscar por nome, telefone ou e-mail..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
         />
 
         <select
@@ -301,7 +301,7 @@ export default function LeadsPage() {
                     <div className="flex items-center gap-3 overflow-hidden">
                       <Avatar name={lead.nome_lead} size={32} />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">{lead.nome_lead}</p>
+                        <p className="truncate text-sm font-medium text-foreground">{lead.nome_lead}</p>
                         <p className="truncate text-xs text-gray-500">
                           {lead.telefone} ·{' '}
                           {format(new Date(lead.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
@@ -318,7 +318,7 @@ export default function LeadsPage() {
                     <span className="truncate text-sm text-gray-700">{lead.vendedor ?? '—'}</span>
                     <span className="truncate text-sm text-gray-700">{lead.veiculo_interesse ?? '—'}</span>
                     <StatusBadge estagio={lead.estagio_lead} />
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       {lead.valor != null ? currencyFormatter.format(lead.valor) : '—'}
                     </span>
                   </div>

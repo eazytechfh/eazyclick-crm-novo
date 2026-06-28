@@ -63,7 +63,7 @@ function LeadCard({ lead, onOpen }: CardProps) {
       <div className="mb-2 flex items-center gap-2">
         <Avatar name={lead.nome_lead} size={28} />
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-gray-900">{lead.nome_lead}</p>
+          <p className="truncate text-sm font-medium text-foreground">{lead.nome_lead}</p>
           <p className="truncate text-xs text-gray-500">{lead.telefone}</p>
         </div>
       </div>
@@ -226,7 +226,7 @@ export default function PipelinePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Pipeline</h1>
+        <h1 className="text-2xl font-bold text-foreground">Pipeline</h1>
         <p className="text-sm text-gray-500">Arraste os cards entre as etapas do funil</p>
       </div>
 

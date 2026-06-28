@@ -5,7 +5,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#f5f6f8',
+        // Tokens de marca, configuráveis por cliente em Configurações > Aparência (admin_master).
+        // Apontam para CSS variables (ver globals.css / RootLayout) em vez de hex fixo, para que
+        // a troca de cor valha em runtime sem precisar recompilar o Tailwind.
+        background: 'var(--color-fundo)',
+        foreground: 'var(--color-texto)',
+        primary: 'var(--color-primaria)',
+        secondary: 'var(--color-secundaria)',
         card: '#ffffff',
         // Tokens de status reutilizáveis para o pipeline de leads e badges em geral.
         // Cada estágio do funil mapeia para uma cor semântica consistente em toda a UI.

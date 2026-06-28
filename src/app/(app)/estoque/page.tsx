@@ -129,7 +129,7 @@ export default function EstoquePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Estoque</h1>
+        <h1 className="text-2xl font-bold text-foreground">Estoque</h1>
         <p className="text-sm text-gray-500">{veiculosFiltrados.length} veículo(s) encontrado(s)</p>
       </div>
 
@@ -139,7 +139,7 @@ export default function EstoquePage() {
           placeholder="Buscar por marca, modelo ou placa..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-gray-900"
+          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
         />
         <select
           value={marcaFiltro}
@@ -199,13 +199,13 @@ export default function EstoquePage() {
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="truncate text-sm font-semibold text-gray-900">
+                  <p className="truncate text-sm font-semibold text-foreground">
                     {veiculo.marca} {veiculo.modelo}
                   </p>
                   <p className="text-xs text-gray-500">
                     {veiculo.ano ?? '—'} · {veiculo.cor ?? '—'}
                   </p>
-                  <p className="mt-1 text-sm font-medium text-gray-900">{veiculo.valor ?? '—'}</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">{veiculo.valor ?? '—'}</p>
                 </div>
               </button>
             );
@@ -262,7 +262,7 @@ export default function EstoquePage() {
               )}
             </div>
 
-            <h2 className="text-lg font-bold text-gray-900">
+            <h2 className="text-lg font-bold text-foreground">
               {selecionado.marca} {selecionado.modelo}
             </h2>
             <p className="text-sm text-gray-500">
@@ -273,12 +273,12 @@ export default function EstoquePage() {
               Quilometragem: {selecionado.quilometragem ?? '—'} km
             </p>
             <p className="text-sm text-gray-700">Motor: {selecionado.motor ?? '—'}</p>
-            <p className="mt-2 text-lg font-bold text-gray-900">{selecionado.valor ?? '—'}</p>
+            <p className="mt-2 text-lg font-bold text-foreground">{selecionado.valor ?? '—'}</p>
 
             <button
               type="button"
               onClick={() => setSelecionado(null)}
-              className="mt-4 w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+              className="mt-4 w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
             >
               Fechar
             </button>

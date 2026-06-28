@@ -22,7 +22,7 @@ export function PillFilter<T extends string>({ options, selected, onChange }: Pi
           className={clsx(
             'rounded-full px-3 py-1.5 text-xs font-medium transition',
             selected === opt.value
-              ? 'bg-gray-900 text-white'
+              ? 'bg-primary text-white'
               : 'text-gray-600 hover:bg-gray-200'
           )}
         >

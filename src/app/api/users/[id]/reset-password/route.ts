@@ -21,7 +21,7 @@ export async function POST(_request: Request, { params }: { params: { id: string
     .single();
 
   const cargo = (profile as { cargo: string } | null)?.cargo;
-  if (cargo !== 'admin_master' && cargo !== 'gerente') {
+  if (cargo !== 'admin_master' && cargo !== 'admin' && cargo !== 'gerente') {
     return NextResponse.json({ error: 'Permissão insuficiente.' }, { status: 403 });
   }
 

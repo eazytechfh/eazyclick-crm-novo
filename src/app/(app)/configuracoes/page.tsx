@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Cargo, Etiqueta, Profile, Vendedor } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
 
-type Tab = 'novo-usuario' | 'usuarios' | 'etiquetas' | 'fila' | 'credenciais';
+type Tab = 'novo-usuario' | 'usuarios' | 'etiquetas' | 'fila' | 'credenciais' | 'aparencia';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'novo-usuario', label: 'Criar novo usuário' },
@@ -13,6 +13,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'etiquetas', label: 'Etiquetas' },
   { id: 'fila', label: 'Fila de atendimento' },
   { id: 'credenciais', label: 'Credenciais' },
+  { id: 'aparencia', label: 'Aparência' },
 ];
 
 function mask(value: string): string {
@@ -47,7 +48,7 @@ export default function ConfiguracoesPage() {
     meuProfile?.cargo === 'admin_master' || meuProfile?.cargo === 'admin' || meuProfile?.cargo === 'gerente';
 
   const visibleTabs = TABS.filter((t) => {
-    if (t.id === 'credenciais') return isAdminMaster;
+    if (t.id === 'credenciais' || t.id === 'aparencia') return isAdminMaster;
     if (t.id === 'novo-usuario' || t.id === 'usuarios') return podeGerenciarUsuarios;
     return true;
   });
@@ -55,7 +56,7 @@ export default function ConfiguracoesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
+        <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
       </div>
 
       <div className="flex flex-wrap gap-2 border-b border-gray-200">
@@ -66,7 +67,7 @@ export default function ConfiguracoesPage() {
             onClick={() => setTab(t.id)}
             className={`border-b-2 px-3 py-2 text-sm font-medium transition ${
               tab === t.id
-                ? 'border-gray-900 text-gray-900'
+                ? 'border-primary text-foreground'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
@@ -80,6 +81,7 @@ export default function ConfiguracoesPage() {
       {tab === 'etiquetas' && <EtiquetasTab />}
       {tab === 'fila' && <FilaAtendimentoTab />}
       {tab === 'credenciais' && isAdminMaster && <CredenciaisTab />}
+      {tab === 'aparencia' && isAdminMaster && <AparenciaTab />}
     </div>
   );
 }
@@ -180,7 +182,7 @@ function CriarUsuarioTab() {
       <button
         type="submit"
         disabled={loading}
-        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
         {loading ? 'Criando...' : 'Criar usuário'}
       </button>
@@ -191,6 +193,9 @@ function CriarUsuarioTab() {
 function GerenciarUsuariosTab() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [acaoEmAndamento, setAcaoEmAndamento] = useState<string | null>(null);
+  const [mensagemErro, setMensagemErro] = useState<string | null>(null);
+  const [linkReset, setLinkReset] = useState<{ email: string; link: string } | null>(null);
 
   useEffect(() => {
     async function fetchProfiles() {
@@ -198,7 +203,7 @@ function GerenciarUsuariosTab() {
       const supabase = createClient();
       const { data } = await supabase
         .from('profiles')
-        .select('id, nome, email, cargo, created_at')
+        .select('id, nome, email, cargo, created_at, desativado')
         .order('created_at', { ascending: false });
       setProfiles((data as Profile[]) ?? []);
       setLoading(false);
@@ -211,68 +216,165 @@ function GerenciarUsuariosTab() {
     const { error } = await supabase.from('profiles').update({ cargo: novoCargo }).eq('id', id);
     if (!error) {
       setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, cargo: novoCargo } : p)));
+    } else {
+      setMensagemErro('Erro ao alterar cargo.');
     }
   }
 
-  async function desativar(id: string) {
-    await fetch(`/api/users/${id}/ban`, { method: 'POST' });
+  async function alternarAtivo(id: string, desativarAgora: boolean) {
+    setAcaoEmAndamento(`ban-${id}`);
+    setMensagemErro(null);
+
+    const response = await fetch(`/api/users/${id}/ban`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ desativar: desativarAgora }),
+    });
+    const data = await response.json();
+
+    setAcaoEmAndamento(null);
+
+    if (!response.ok) {
+      setMensagemErro(data.error ?? 'Erro ao alterar status do usuário.');
+      return;
+    }
+
+    setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, desativado: desativarAgora } : p)));
   }
 
-  async function resetarSenha(id: string) {
-    await fetch(`/api/users/${id}/reset-password`, { method: 'POST' });
+  async function resetarSenha(id: string, email: string) {
+    setAcaoEmAndamento(`reset-${id}`);
+    setMensagemErro(null);
+
+    const response = await fetch(`/api/users/${id}/reset-password`, { method: 'POST' });
+    const data = await response.json();
+
+    setAcaoEmAndamento(null);
+
+    if (!response.ok) {
+      setMensagemErro(data.error ?? 'Erro ao gerar link de redefinição de senha.');
+      return;
+    }
+
+    setLinkReset({ email, link: data.link });
   }
 
   if (loading) return <p className="text-sm text-gray-500">Carregando...</p>;
 
   return (
-    <div className="overflow-x-auto rounded-xl bg-card shadow-sm">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500">
-            <th className="px-4 py-3">Nome</th>
-            <th className="px-4 py-3">E-mail</th>
-            <th className="px-4 py-3">Cargo</th>
-            <th className="px-4 py-3">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {profiles.map((p) => (
-            <tr key={p.id} className="border-b border-gray-100">
-              <td className="px-4 py-3">{p.nome ?? '—'}</td>
-              <td className="px-4 py-3">{p.email}</td>
-              <td className="px-4 py-3">
-                <select
-                  value={p.cargo}
-                  onChange={(e) => alterarCargo(p.id, e.target.value as Cargo)}
-                  disabled={p.cargo === 'admin_master'}
-                  className="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-60"
-                >
-                  <option value="vendedor">Vendedor</option>
-                  <option value="gerente">Gerente</option>
-                  <option value="admin">Admin</option>
-                  {p.cargo === 'admin_master' && <option value="admin_master">Admin Master</option>}
-                </select>
-              </td>
-              <td className="px-4 py-3 space-x-2">
-                <button
-                  type="button"
-                  onClick={() => resetarSenha(p.id)}
-                  className="rounded-lg border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
-                >
-                  Resetar senha
-                </button>
-                <button
-                  type="button"
-                  onClick={() => desativar(p.id)}
-                  className="rounded-lg border border-red-300 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Desativar
-                </button>
-              </td>
+    <div className="space-y-3">
+      {mensagemErro && (
+        <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{mensagemErro}</p>
+      )}
+
+      <div className="overflow-x-auto rounded-xl bg-card shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500">
+              <th className="px-4 py-3">Nome</th>
+              <th className="px-4 py-3">E-mail</th>
+              <th className="px-4 py-3">Cargo</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {profiles.map((p) => (
+              <tr key={p.id} className="border-b border-gray-100">
+                <td className="px-4 py-3">{p.nome ?? '—'}</td>
+                <td className="px-4 py-3">{p.email}</td>
+                <td className="px-4 py-3">
+                  <select
+                    value={p.cargo}
+                    onChange={(e) => alterarCargo(p.id, e.target.value as Cargo)}
+                    disabled={p.cargo === 'admin_master'}
+                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs disabled:opacity-60"
+                  >
+                    <option value="vendedor">Vendedor</option>
+                    <option value="gerente">Gerente</option>
+                    <option value="admin">Admin</option>
+                    {p.cargo === 'admin_master' && <option value="admin_master">Admin Master</option>}
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      p.desativado ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'
+                    }`}
+                  >
+                    {p.desativado ? 'Desativado' : 'Ativo'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => resetarSenha(p.id, p.email)}
+                    disabled={acaoEmAndamento === `reset-${p.id}`}
+                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    {acaoEmAndamento === `reset-${p.id}` ? 'Gerando...' : 'Resetar senha'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => alternarAtivo(p.id, !p.desativado)}
+                    disabled={acaoEmAndamento === `ban-${p.id}` || p.cargo === 'admin_master'}
+                    className={`rounded-lg border px-2 py-1 text-xs disabled:opacity-60 ${
+                      p.desativado
+                        ? 'border-green-300 text-green-600 hover:bg-green-50'
+                        : 'border-red-300 text-red-600 hover:bg-red-50'
+                    }`}
+                  >
+                    {acaoEmAndamento === `ban-${p.id}`
+                      ? 'Aplicando...'
+                      : p.desativado
+                        ? 'Reativar'
+                        : 'Desativar'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {linkReset && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setLinkReset(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl bg-white p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-1 text-sm font-semibold text-foreground">Link de redefinição de senha</h3>
+            <p className="mb-3 text-xs text-gray-500">
+              Envie este link para <strong>{linkReset.email}</strong>. Ele expira após o primeiro uso.
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={linkReset.link}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-xs"
+                onFocus={(e) => e.target.select()}
+              />
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(linkReset.link)}
+                className="rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white"
+              >
+                Copiar
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLinkReset(null)}
+              className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -337,7 +439,7 @@ function EtiquetasTab() {
             className="h-10 w-14 rounded-lg border border-gray-300"
           />
         </div>
-        <button type="submit" className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white">
+        <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white">
           Adicionar
         </button>
       </form>
@@ -424,7 +526,7 @@ function FilaAtendimentoTab() {
               >
                 <Avatar name={v.vendedor ?? '?'} size={40} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900">{v.vendedor}</p>
+                  <p className="text-sm font-semibold text-foreground">{v.vendedor}</p>
                   <p className="text-xs text-gray-500">{v.telefone ?? '—'}</p>
                 </div>
                 <span className="rounded-full bg-green-600 px-3 py-1 text-xs font-medium text-white">
@@ -455,7 +557,7 @@ function FilaAtendimentoTab() {
                 </span>
                 <Avatar name={v.vendedor ?? '?'} size={32} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{v.vendedor}</p>
+                  <p className="text-sm font-medium text-foreground">{v.vendedor}</p>
                   <p className="text-xs text-gray-500">{v.telefone ?? '—'}</p>
                 </div>
                 <span className="text-xs text-gray-500">{v.quantos_lead ?? 0} leads</span>
@@ -478,7 +580,7 @@ function FilaAtendimentoTab() {
               >
                 <Avatar name={v.vendedor ?? '?'} size={32} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{v.vendedor}</p>
+                  <p className="text-sm font-medium text-foreground">{v.vendedor}</p>
                   <p className="text-xs text-gray-500">{v.telefone ?? '—'}</p>
                 </div>
                 <span className="text-xs text-gray-400">atender: {v.atender ?? '—'}</span>
@@ -610,7 +712,7 @@ function CredenciaisTab() {
   return (
     <div className="max-w-md space-y-6">
       <div className="rounded-xl bg-card p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Supabase</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Supabase</h2>
         <p className="text-xs text-gray-500">URL</p>
         <p className="mb-2 text-sm text-gray-800">{mask(supabaseUrl)}</p>
         <p className="text-xs text-gray-500">Anon Key</p>
@@ -618,7 +720,7 @@ function CredenciaisTab() {
       </div>
 
       <div className="rounded-xl bg-card p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Token uazapi</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Token uazapi</h2>
         <input
           value={uazapiToken}
           onChange={(e) => setUazapiToken(e.target.value)}
@@ -629,7 +731,7 @@ function CredenciaisTab() {
           type="button"
           onClick={salvarToken}
           disabled={salvando}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
           {salvando ? 'Salvando...' : 'Salvar token'}
         </button>
@@ -637,7 +739,7 @@ function CredenciaisTab() {
       </div>
 
       <div className="rounded-xl bg-card p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">WhatsApp</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">WhatsApp</h2>
         <p className="mb-3 text-xs text-gray-500">
           Status:{' '}
           <span
@@ -699,6 +801,203 @@ function CredenciaisTab() {
             </button>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function AparenciaTab() {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [corPrimaria, setCorPrimaria] = useState('#111827');
+  const [corSecundaria, setCorSecundaria] = useState('#3b82f6');
+  const [corTexto, setCorTexto] = useState('#111827');
+  const [corFundo, setCorFundo] = useState('#f5f6f8');
+
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
+  const [salvandoCores, setSalvandoCores] = useState(false);
+  const [mensagem, setMensagem] = useState<{ tipo: 'erro' | 'sucesso'; texto: string } | null>(null);
+
+  useEffect(() => {
+    async function fetchAtual() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('app_settings')
+        .select('logo_url, cor_primaria, cor_secundaria, cor_texto, cor_fundo')
+        .eq('id', 1)
+        .single();
+      const atual = data as {
+        logo_url: string | null;
+        cor_primaria: string;
+        cor_secundaria: string;
+        cor_texto: string;
+        cor_fundo: string;
+      } | null;
+      if (!atual) return;
+      setLogoUrl(atual.logo_url);
+      setCorPrimaria(atual.cor_primaria);
+      setCorSecundaria(atual.cor_secundaria);
+      setCorTexto(atual.cor_texto);
+      setCorFundo(atual.cor_fundo);
+    }
+    fetchAtual();
+  }, []);
+
+  // Aplica as cores no documento imediatamente (sem esperar reload), para o admin master ver o
+  // resultado em tempo real enquanto ajusta. Outros usuários recebem o valor salvo no próximo
+  // carregamento de página, via RootLayout (que lê direto do banco).
+  function aplicarPreview(vars: Record<string, string>) {
+    Object.entries(vars).forEach(([key, value]) => {
+      document.documentElement.style.setProperty(key, value);
+    });
+  }
+
+  async function handleUploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setEnviandoLogo(true);
+    setMensagem(null);
+
+    const supabase = createClient();
+    const path = `logo-${Date.now()}.${file.name.split('.').pop()}`;
+    const { error: uploadError } = await supabase.storage.from('logos').upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+    if (uploadError) {
+      setEnviandoLogo(false);
+      setMensagem({ tipo: 'erro', texto: 'Erro ao enviar logo.' });
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from('logos').getPublicUrl(path);
+    const novaUrl = publicUrlData.publicUrl;
+
+    const { error: updateError } = await supabase
+      .from('app_settings')
+      .update({ logo_url: novaUrl, updated_at: new Date().toISOString() })
+      .eq('id', 1);
+
+    setEnviandoLogo(false);
+
+    if (updateError) {
+      setMensagem({ tipo: 'erro', texto: 'Logo enviada, mas houve erro ao salvar.' });
+      return;
+    }
+
+    setLogoUrl(novaUrl);
+    setMensagem({ tipo: 'sucesso', texto: 'Logo atualizada com sucesso.' });
+  }
+
+  async function salvarCores() {
+    setSalvandoCores(true);
+    setMensagem(null);
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('app_settings')
+      .update({
+        cor_primaria: corPrimaria,
+        cor_secundaria: corSecundaria,
+        cor_texto: corTexto,
+        cor_fundo: corFundo,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 1);
+
+    setSalvandoCores(false);
+
+    if (error) {
+      setMensagem({ tipo: 'erro', texto: 'Erro ao salvar cores.' });
+      return;
+    }
+
+    aplicarPreview({
+      '--color-primaria': corPrimaria,
+      '--color-secundaria': corSecundaria,
+      '--color-texto': corTexto,
+      '--color-fundo': corFundo,
+    });
+    setMensagem({ tipo: 'sucesso', texto: 'Cores salvas. Outros usuários verão a mudança ao recarregar a página.' });
+  }
+
+  return (
+    <div className="max-w-md space-y-6">
+      <div className="rounded-xl bg-card p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Logo do cliente</h2>
+        {logoUrl && (
+          <div className="mb-3 inline-flex h-20 max-w-[280px] items-center justify-center overflow-hidden rounded-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element -- preview de URL dinâmica do Storage */}
+            <img src={logoUrl} alt="Logo atual" className="h-full w-full object-contain" />
+          </div>
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleUploadLogo}
+          disabled={enviandoLogo}
+          className="block w-full text-sm text-gray-600"
+        />
+        {enviandoLogo && <p className="mt-2 text-xs text-gray-500">Enviando...</p>}
+      </div>
+
+      <div className="rounded-xl bg-card p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Cores do sistema</h2>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-700">Cor primária (botões, destaque)</label>
+            <input
+              type="color"
+              value={corPrimaria}
+              onChange={(e) => setCorPrimaria(e.target.value)}
+              className="h-8 w-12 cursor-pointer rounded border border-gray-300"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-700">Cor secundária (acentos)</label>
+            <input
+              type="color"
+              value={corSecundaria}
+              onChange={(e) => setCorSecundaria(e.target.value)}
+              className="h-8 w-12 cursor-pointer rounded border border-gray-300"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-700">Cor do texto</label>
+            <input
+              type="color"
+              value={corTexto}
+              onChange={(e) => setCorTexto(e.target.value)}
+              className="h-8 w-12 cursor-pointer rounded border border-gray-300"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-700">Cor de fundo</label>
+            <input
+              type="color"
+              value={corFundo}
+              onChange={(e) => setCorFundo(e.target.value)}
+              className="h-8 w-12 cursor-pointer rounded border border-gray-300"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={salvarCores}
+          disabled={salvandoCores}
+          className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        >
+          {salvandoCores ? 'Salvando...' : 'Salvar cores'}
+        </button>
+      </div>
+
+      {mensagem && (
+        <p className={`text-sm ${mensagem.tipo === 'erro' ? 'text-red-600' : 'text-green-600'}`}>
+          {mensagem.texto}
+        </p>
       )}
     </div>
   );

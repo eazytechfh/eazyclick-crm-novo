@@ -2,10 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Valores padrão (fallback de build); o RootLayout sobrescreve estas variáveis em runtime
+   com os valores salvos em app_settings, permitindo trocar a marca sem rebuild. */
+:root {
+  --color-fundo: #f5f6f8;
+  --color-texto: #111827;
+  --color-primaria: #111827;
+  --color-secundaria: #3b82f6;
+}
+
 html,
 body {
-  background-color: #f5f6f8;
-  color: #111827;
+  background-color: var(--color-fundo);
+  color: var(--color-texto);
 }
 
 * {
