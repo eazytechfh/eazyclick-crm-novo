@@ -150,7 +150,7 @@ export default function PipelinePage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes'
         )
         .order('created_at', { ascending: false });
 
@@ -199,10 +199,27 @@ export default function PipelinePage() {
       prev.map((l) => (l.id === leadId ? { ...l, estagio_lead: novoEstagio } : l))
     );
 
+    // Ao entrar em "em_negociacao" inicia o cronômetro de 30min; ao sair, limpa o prazo para
+    // não deixar um popup de expiração "fantasma" caso o lead volte depois para essa coluna.
+    const entrandoEmNegociacao = novoEstagio === 'em_negociacao';
+    const saindoDeNegociacao = normalizeEstagio(estagioAnterior) === 'em_negociacao' && !entrandoEmNegociacao;
+
     const supabase = createClient();
     const { error } = await supabase
       .from('BASE_DE_LEADS')
-      .update({ estagio_lead: novoEstagio })
+      .update({
+        estagio_lead: novoEstagio,
+        ...(entrandoEmNegociacao && {
+          negociacao_expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          negociacao_notificado_em: null,
+          negociacao_extensoes: 0,
+        }),
+        ...(saindoDeNegociacao && {
+          negociacao_expira_em: null,
+          negociacao_notificado_em: null,
+          negociacao_extensoes: 0,
+        }),
+      })
       .eq('id', leadId);
 
     if (error) {
