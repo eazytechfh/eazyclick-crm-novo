@@ -221,6 +221,7 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     vendedoresDisponiveis,
     veiculosDisponiveis,
     etiquetasDisponiveis,
+    etiquetasPorLead,
     leadsFiltrados,
     limparFiltros,
     refreshEtiquetas,

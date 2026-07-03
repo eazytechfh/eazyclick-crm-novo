@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { notificarNegociacaoVencida } from '@/lib/negociacao/notificacao';
 
-// Chamado pelo front (NegociacaoTimerWatcher) assim que o popup de "tempo esgotado" aparece
-// para um lead. Usa o admin client para reivindicar a notificação de forma atômica — o update
-// só afeta a linha se negociacao_notificado_em ainda estiver null, então mesmo que vários
-// navegadores detectem o vencimento ao mesmo tempo, o webhook do n8n só dispara uma vez.
+// Chamado pelo front (NegociacaoTimerWatcher) assim que detecta um lead vencido. Valida a sessão
+// e a visibilidade do lead com o client normal (respeitando RLS) ANTES de escalar para o client
+// admin — assim ninguém não autenticado, nem autenticado sem acesso ao lead, consegue forjar o
+// disparo do webhook de WhatsApp para um lead qualquer.
 export async function POST(request: Request) {
   const { leadId } = await request.json().catch(() => ({ leadId: null }));
 
@@ -12,43 +14,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'leadId inválido.' }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-  const agora = new Date().toISOString();
+  const supabase = createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  }
 
-  const { data: lead, error } = await admin
+  const { data: lead } = await supabase
     .from('BASE_DE_LEADS')
-    .update({ negociacao_notificado_em: agora })
+    .select('id')
     .eq('id', leadId)
-    .eq('estagio_lead', 'em_negociacao')
-    .is('negociacao_notificado_em', null)
-    .lte('negociacao_expira_em', agora)
-    .select('id, nome_lead, telefone, vendedor, negociacao_expira_em, negociacao_extensoes')
-    .single();
+    .maybeSingle();
 
-  if (error || !lead) {
-    // Não é erro: outro navegador já reivindicou essa notificação, ou o lead não está mais vencido.
-    return NextResponse.json({ notificado: false });
+  if (!lead) {
+    return NextResponse.json({ error: 'Lead não encontrado.' }, { status: 404 });
   }
 
-  const webhookUrl = process.env.N8N_NEGOCIACAO_WEBHOOK_URL;
-  if (webhookUrl) {
-    try {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_lead: lead.id,
-          nome_lead: lead.nome_lead,
-          telefone: lead.telefone,
-          vendedor: lead.vendedor,
-          negociacao_expira_em: lead.negociacao_expira_em,
-          negociacao_extensoes: lead.negociacao_extensoes,
-        }),
-      });
-    } catch (webhookError) {
-      console.error('Erro ao chamar webhook do n8n:', webhookError);
-    }
+  const admin = createAdminClient();
+  const resultado = await notificarNegociacaoVencida(admin, leadId);
+
+  if ('erro' in resultado) {
+    return NextResponse.json({ error: resultado.erro }, { status: resultado.status });
   }
 
-  return NextResponse.json({ notificado: true });
+  return NextResponse.json(resultado);
 }
