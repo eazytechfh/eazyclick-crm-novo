@@ -24,9 +24,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const branding = await fetchBranding();
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar userName={userName} userCargo={userCargo} logoUrl={branding.logo_url} />
-      <main className="flex-1 overflow-y-auto p-8">{children}</main>
+      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-8">{children}</main>
       {userData.user && <NegociacaoTimerWatcher userCargo={userCargo} />}
     </div>
   );
