@@ -7,9 +7,16 @@ import { ptBR } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
-import { StatusBadge } from '@/components/StatusBadge';
+import { StatusBadge, ESTAGIO_CONFIG } from '@/components/StatusBadge';
 import { LeadFiltersBar } from '@/components/LeadFiltersBar';
+import { NovoLeadModal } from '@/components/NovoLeadModal';
+import { LeadDrawer } from '@/components/LeadDrawer';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
+
+function getEstagioConfig(estagio: string) {
+  const key = estagio.toLowerCase().trim();
+  return ESTAGIO_CONFIG[key] ?? { label: 'Oportunidade', color: '#22c55e' };
+}
 
 const ORIGEM_DOT_COLORS: Record<string, string> = {
   whatsapp: '#22c55e',
@@ -27,6 +34,8 @@ function getOrigemColor(origem: string | null): string {
 export default function LeadsPage() {
   const [leads, setLeads] = useState<BaseDeLeads[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modalNovoLeadAberto, setModalNovoLeadAberto] = useState(false);
+  const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
 
@@ -39,7 +48,7 @@ export default function LeadsPage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora"'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
         )
         .order('created_at', { ascending: false });
 
@@ -108,13 +117,22 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-bold text-foreground">Leads</h1>
           <p className="text-sm text-gray-500">{leadsFiltrados.length} lead(s) encontrado(s)</p>
         </div>
-        <button
-          type="button"
-          onClick={exportarCsv}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setModalNovoLeadAberto(true)}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            Novo lead
+          </button>
+          <button
+            type="button"
+            onClick={exportarCsv}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
       <LeadFiltersBar filters={filters} />
@@ -141,7 +159,8 @@ export default function LeadsPage() {
                 return (
                   <div
                     key={lead.id}
-                    className="absolute left-0 top-0 grid w-full grid-cols-[1.5fr_1fr_1fr_1fr_1fr_0.8fr] items-center gap-2 border-b border-gray-100 px-4"
+                    onClick={() => setLeadSelecionado(lead)}
+                    className="absolute left-0 top-0 grid w-full cursor-pointer grid-cols-[1.5fr_1fr_1fr_1fr_1fr_0.8fr] items-center gap-2 border-b border-gray-100 px-4 hover:bg-gray-50"
                     style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                   >
                     <div className="flex items-center gap-3 overflow-hidden">
@@ -174,6 +193,30 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
+
+      {modalNovoLeadAberto && (
+        <NovoLeadModal
+          onClose={() => setModalNovoLeadAberto(false)}
+          onCreated={(novoLead) => {
+            setLeads((prev) => [novoLead, ...prev]);
+            setModalNovoLeadAberto(false);
+          }}
+        />
+      )}
+
+      {leadSelecionado && (
+        <LeadDrawer
+          lead={leadSelecionado}
+          estagioLabel={getEstagioConfig(leadSelecionado.estagio_lead).label}
+          estagioColor={getEstagioConfig(leadSelecionado.estagio_lead).color}
+          estagioLabelOf={(estagio) => getEstagioConfig(estagio).label}
+          onClose={() => setLeadSelecionado(null)}
+          onUpdated={(atualizado) => {
+            setLeadSelecionado(atualizado);
+            setLeads((prev) => prev.map((l) => (l.id === atualizado.id ? atualizado : l)));
+          }}
+        />
+      )}
     </div>
   );
 }

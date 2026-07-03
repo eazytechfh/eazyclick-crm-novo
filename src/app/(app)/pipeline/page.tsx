@@ -18,6 +18,10 @@ import { LeadDrawer } from '@/components/LeadDrawer';
 import { LeadFiltersBar } from '@/components/LeadFiltersBar';
 import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
+import { formatContagem } from '@/lib/negociacao/tempo';
+import { statusAtendimentoDoLead, type StatusAtendimento } from '@/lib/negociacao/etiquetasAtendimento';
+
+const TICK_MS = 1_000;
 
 // As colunas do Pipeline são geradas a partir de ESTAGIO_CONFIG (StatusBadge.tsx), que contém
 // exatamente os valores aceitos pela constraint CHECK de estagio_lead no banco. Não adicione um
@@ -37,12 +41,39 @@ function normalizeEstagio(estagio: string): ColunaId {
   return found ? found.id : 'oportunidade';
 }
 
+// Timer de negociação exibido no próprio card do Pipeline: quando o lead já tem a etiqueta
+// "Atendimento finalizado", vira um selo fixo "Finalizado" (para de contar, não some); com
+// "Atendimento iniciado" continua contando normalmente, só que em verde (ver
+// src/lib/negociacao/etiquetasAtendimento.ts).
+function TimerNegociacaoCard({ expiraEm, agora, statusAtendimento }: { expiraEm: string; agora: number; statusAtendimento: StatusAtendimento }) {
+  if (statusAtendimento === 'finalizado') {
+    return (
+      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+        Finalizado
+      </span>
+    );
+  }
+
+  const restante = new Date(expiraEm).getTime() - agora;
+  const vencido = restante <= 0;
+  const iniciado = statusAtendimento === 'iniciado';
+  const cor = iniciado ? 'bg-green-50 text-green-700' : vencido ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700';
+
+  return (
+    <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${cor}`}>
+      {vencido && !iniciado ? 'Vencido' : formatContagem(restante)}
+    </span>
+  );
+}
+
 interface CardProps {
   lead: BaseDeLeads;
   onOpen: (lead: BaseDeLeads) => void;
+  agora: number;
+  statusAtendimento: StatusAtendimento;
 }
 
-function LeadCard({ lead, onOpen }: CardProps) {
+function LeadCard({ lead, onOpen, agora, statusAtendimento }: CardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   });
@@ -52,6 +83,8 @@ function LeadCard({ lead, onOpen }: CardProps) {
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  const mostrarTimer = normalizeEstagio(lead.estagio_lead) === 'em_negociacao' && !!lead.negociacao_expira_em;
 
   return (
     <div
@@ -73,6 +106,13 @@ function LeadCard({ lead, onOpen }: CardProps) {
         <p className="truncate text-xs text-gray-600">Interesse: {lead.veiculo_interesse}</p>
       )}
       {lead.vendedor && <p className="truncate text-xs text-gray-400">Vendedor: {lead.vendedor}</p>}
+      {mostrarTimer && (
+        <TimerNegociacaoCard
+          expiraEm={lead.negociacao_expira_em as string}
+          agora={agora}
+          statusAtendimento={statusAtendimento}
+        />
+      )}
     </div>
   );
 }
@@ -83,15 +123,33 @@ interface ColumnProps {
   color: string;
   leads: BaseDeLeads[];
   onOpenLead: (lead: BaseDeLeads) => void;
+  agora: number;
+  statusAtendimentoPorLead: Map<number, StatusAtendimento>;
 }
 
-function Column({ id, label, color, leads, onOpenLead }: ColumnProps) {
+const LEADS_POR_PAGINA = 8;
+
+function Column({ id, label, color, leads, onOpenLead, agora, statusAtendimentoPorLead }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
+  const [pagina, setPagina] = useState(1);
+
+  // Volta pra primeira página sempre que o conjunto de leads da coluna muda (filtro aplicado,
+  // lead movido pra dentro/fora etc.), pra não deixar a paginação "presa" numa página vazia.
+  useEffect(() => {
+    setPagina(1);
+  }, [leads.length]);
+
+  const totalPaginas = Math.max(1, Math.ceil(leads.length / LEADS_POR_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const leadsDaPagina = leads.slice(
+    (paginaAtual - 1) * LEADS_POR_PAGINA,
+    paginaAtual * LEADS_POR_PAGINA
+  );
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-72 shrink-0 flex-col rounded-xl bg-gray-50 p-3 ${
+      className={`flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-gray-50 p-3 ${
         isOver ? 'ring-2 ring-gray-400' : ''
       }`}
     >
@@ -103,13 +161,43 @@ function Column({ id, label, color, leads, onOpenLead }: ColumnProps) {
         <span className="text-xs text-gray-500">{leads.length}</span>
       </div>
 
-      <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex max-h-[min(820px,calc(100vh-250px))] min-h-[120px] flex-col gap-2 overflow-y-auto pr-1">
-          {leads.map((lead) => (
-            <LeadCard key={lead.id} lead={lead} onOpen={onOpenLead} />
+      <SortableContext items={leadsDaPagina.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+        <div className="flex min-h-[120px] flex-1 flex-col gap-2 overflow-y-auto pr-1">
+          {leadsDaPagina.map((lead) => (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              onOpen={onOpenLead}
+              agora={agora}
+              statusAtendimento={statusAtendimentoPorLead.get(lead.id) ?? null}
+            />
           ))}
         </div>
       </SortableContext>
+
+      {totalPaginas > 1 && (
+        <div className="mt-3 flex items-center justify-between px-1">
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.max(1, p - 1))}
+            disabled={paginaAtual === 1}
+            className="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Anterior
+          </button>
+          <span className="text-xs text-gray-500">
+            {paginaAtual} / {totalPaginas}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+            disabled={paginaAtual === totalPaginas}
+            className="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Próxima
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -120,8 +208,29 @@ export default function PipelinePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState<string>('Usuário');
+  const [agora, setAgora] = useState(() => Date.now());
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
+
+  // Tick de 1s só para recalcular a contagem regressiva dos timers nos cards, sem re-buscar
+  // os leads do banco.
+  useEffect(() => {
+    const intervalo = setInterval(() => setAgora(Date.now()), TICK_MS);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  const etiquetaNomePorId = useMemo(
+    () => new Map(filters.etiquetasDisponiveis.map((etiqueta) => [etiqueta.id, etiqueta.nome])),
+    [filters.etiquetasDisponiveis]
+  );
+
+  const statusAtendimentoPorLead = useMemo(() => {
+    const map = new Map<number, StatusAtendimento>();
+    leads.forEach((lead) => {
+      map.set(lead.id, statusAtendimentoDoLead(filters.etiquetasPorLead.get(lead.id), etiquetaNomePorId));
+    });
+    return map;
+  }, [leads, filters.etiquetasPorLead, etiquetaNomePorId]);
 
   useEffect(() => {
     async function fetchUsuario() {
@@ -213,22 +322,53 @@ export default function PipelinePage() {
     const saindoDeNegociacao = normalizeEstagio(estagioAnterior) === 'em_negociacao' && !entrandoEmNegociacao;
 
     const supabase = createClient();
-    const { error } = await supabase
-      .from('BASE_DE_LEADS')
-      .update({
-        estagio_lead: novoEstagio,
-        ...(entrandoEmNegociacao && {
+
+    // Ao entrar/sair de "em_negociacao" também resetamos os campos de status de notificação
+    // (negociacao_notificacao_status/erro/reivindicada_em), senão um ciclo antigo poderia
+    // deixar o lead marcado como já notificado/reivindicado quando o cronômetro reiniciar.
+    const camposNegociacaoCompletos = entrandoEmNegociacao
+      ? {
           negociacao_expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
           negociacao_notificado_em: null,
           negociacao_extensoes: 0,
-        }),
-        ...(saindoDeNegociacao && {
-          negociacao_expira_em: null,
-          negociacao_notificado_em: null,
-          negociacao_extensoes: 0,
-        }),
-      })
+          negociacao_notificacao_status: null,
+          negociacao_notificacao_erro: null,
+          negociacao_notificacao_reivindicada_em: null,
+        }
+      : saindoDeNegociacao
+        ? {
+            negociacao_expira_em: null,
+            negociacao_notificado_em: null,
+            negociacao_extensoes: 0,
+            negociacao_notificacao_status: null,
+            negociacao_notificacao_erro: null,
+            negociacao_notificacao_reivindicada_em: null,
+          }
+        : {};
+
+    let { error } = await supabase
+      .from('BASE_DE_LEADS')
+      .update({ estagio_lead: novoEstagio, ...camposNegociacaoCompletos })
       .eq('id', leadId);
+
+    // Fallback: as colunas de status de notificação (migration 0009) ainda não existem nesse
+    // ambiente. Refaz o update só com as colunas básicas do cronômetro (migration 0008).
+    if (error && (error.code === '42703' || /column|schema cache/i.test(error.message))) {
+      const camposBasicos = entrandoEmNegociacao
+        ? {
+            negociacao_expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+            negociacao_notificado_em: null,
+            negociacao_extensoes: 0,
+          }
+        : saindoDeNegociacao
+          ? { negociacao_expira_em: null, negociacao_notificado_em: null, negociacao_extensoes: 0 }
+          : {};
+
+      ({ error } = await supabase
+        .from('BASE_DE_LEADS')
+        .update({ estagio_lead: novoEstagio, ...camposBasicos })
+        .eq('id', leadId));
+    }
 
     if (error) {
       // Rollback em caso de erro de escrita, e aviso simples ao usuário.
@@ -249,7 +389,7 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Pipeline</h1>
         <p className="text-sm text-gray-500">
@@ -267,7 +407,7 @@ export default function PipelinePage() {
         <p className="text-sm text-gray-500">Carregando...</p>
       ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4">
+          <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4">
             {COLUNAS.map((coluna) => (
               <Column
                 key={coluna.id}
@@ -276,6 +416,8 @@ export default function PipelinePage() {
                 color={coluna.color}
                 leads={leadsPorColuna.get(coluna.id) ?? []}
                 onOpenLead={setLeadSelecionado}
+                agora={agora}
+                statusAtendimentoPorLead={statusAtendimentoPorLead}
               />
             ))}
           </div>
