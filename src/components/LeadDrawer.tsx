@@ -361,6 +361,17 @@ export function LeadDrawer({
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              Resumo de qualificação [IA]
+            </h3>
+            <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm leading-relaxed text-gray-700">
+              {lead.resumo_qualificacao?.trim() || (
+                <span className="text-gray-400">Nenhum resumo de qualificação disponível ainda.</span>
+              )}
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
               Observações
             </h3>
             <textarea
