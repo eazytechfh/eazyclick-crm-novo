@@ -8,33 +8,8 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
 import { StatusBadge } from '@/components/StatusBadge';
-import { PillFilter, type PillOption } from '@/components/PillFilter';
-import { isDentroExpediente } from '@/lib/expediente';
-
-type Periodo = 'hoje' | 'ontem' | '7d' | '30d' | '90d' | 'todos';
-type Expediente = 'todos' | 'dentro' | 'fora';
-
-const PERIODO_OPTIONS: PillOption<Periodo>[] = [
-  { value: 'hoje', label: 'Hoje' },
-  { value: 'ontem', label: 'Ontem' },
-  { value: '7d', label: '7 dias' },
-  { value: '30d', label: '30 dias' },
-  { value: '90d', label: '90 dias' },
-  { value: 'todos', label: 'Todos' },
-];
-
-const EXPEDIENTE_OPTIONS: PillOption<Expediente>[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'dentro', label: 'Dentro do expediente' },
-  { value: 'fora', label: 'Fora do expediente' },
-];
-
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+import { LeadFiltersBar } from '@/components/LeadFiltersBar';
+import { useLeadFilters } from '@/hooks/useLeadFilters';
 
 const ORIGEM_DOT_COLORS: Record<string, string> = {
   whatsapp: '#22c55e',
@@ -52,13 +27,8 @@ function getOrigemColor(origem: string | null): string {
 export default function LeadsPage() {
   const [leads, setLeads] = useState<BaseDeLeads[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [busca, setBusca] = useState('');
-  const [origemFiltro, setOrigemFiltro] = useState('todas');
-  const [vendedorFiltro, setVendedorFiltro] = useState('todos');
-  const [veiculoFiltro, setVeiculoFiltro] = useState('todos');
-  const [periodo, setPeriodo] = useState<Periodo>('todos');
-  const [expediente, setExpediente] = useState<Expediente>('todos');
+  const filters = useLeadFilters(leads);
+  const { leadsFiltrados } = filters;
 
   useEffect(() => {
     let isMounted = true;
@@ -89,72 +59,6 @@ export default function LeadsPage() {
       isMounted = false;
     };
   }, []);
-
-  const origensDisponiveis = useMemo(
-    () => Array.from(new Set(leads.map((l) => l.origem).filter((v): v is string => Boolean(v)))),
-    [leads]
-  );
-  const vendedoresDisponiveis = useMemo(
-    () => Array.from(new Set(leads.map((l) => l.vendedor).filter((v): v is string => Boolean(v)))),
-    [leads]
-  );
-  const veiculosDisponiveis = useMemo(
-    () =>
-      Array.from(new Set(leads.map((l) => l.veiculo_interesse).filter((v): v is string => Boolean(v)))),
-    [leads]
-  );
-
-  const leadsFiltrados = useMemo(() => {
-    return leads.filter((lead) => {
-      if (busca) {
-        const term = busca.toLowerCase();
-        const matches =
-          lead.nome_lead?.toLowerCase().includes(term) ||
-          lead.telefone?.toLowerCase().includes(term) ||
-          lead.email?.toLowerCase().includes(term);
-        if (!matches) return false;
-      }
-
-      if (origemFiltro !== 'todas' && lead.origem !== origemFiltro) return false;
-      if (vendedorFiltro !== 'todos' && lead.vendedor !== vendedorFiltro) return false;
-      if (veiculoFiltro !== 'todos' && lead.veiculo_interesse !== veiculoFiltro) return false;
-
-      if (periodo !== 'todos') {
-        const created = new Date(lead.created_at);
-        const limites: Record<Exclude<Periodo, 'todos'>, Date> = {
-          hoje: daysAgo(0),
-          ontem: daysAgo(1),
-          '7d': daysAgo(7),
-          '30d': daysAgo(30),
-          '90d': daysAgo(90),
-        };
-        if (periodo === 'ontem') {
-          const inicioOntem = daysAgo(1);
-          const fimOntem = daysAgo(0);
-          if (!(created >= inicioOntem && created < fimOntem)) return false;
-        } else if (created < limites[periodo]) {
-          return false;
-        }
-      }
-
-      if (expediente !== 'todos') {
-        const dentro = isDentroExpediente(new Date(lead.created_at));
-        if (expediente === 'dentro' && !dentro) return false;
-        if (expediente === 'fora' && dentro) return false;
-      }
-
-      return true;
-    });
-  }, [leads, busca, origemFiltro, vendedorFiltro, veiculoFiltro, periodo, expediente]);
-
-  function limparFiltros() {
-    setBusca('');
-    setOrigemFiltro('todas');
-    setVendedorFiltro('todos');
-    setVeiculoFiltro('todos');
-    setPeriodo('todos');
-    setExpediente('todos');
-  }
 
   function exportarCsv() {
     const headers = ['Nome', 'Telefone', 'Email', 'Origem', 'Vendedor', 'Veículo', 'Estágio', 'Valor', 'Criado em'];
@@ -213,65 +117,7 @@ export default function LeadsPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-card p-4 shadow-sm">
-        <input
-          type="text"
-          placeholder="Buscar por nome, telefone ou e-mail..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
-        />
-
-        <select
-          value={origemFiltro}
-          onChange={(e) => setOrigemFiltro(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="todas">Todas as origens</option>
-          {origensDisponiveis.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={vendedorFiltro}
-          onChange={(e) => setVendedorFiltro(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="todos">Todos os vendedores</option>
-          {vendedoresDisponiveis.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={veiculoFiltro}
-          onChange={(e) => setVeiculoFiltro(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-        >
-          <option value="todos">Todos os veículos</option>
-          {veiculosDisponiveis.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-
-        <PillFilter options={PERIODO_OPTIONS} selected={periodo} onChange={setPeriodo} />
-        <PillFilter options={EXPEDIENTE_OPTIONS} selected={expediente} onChange={setExpediente} />
-
-        <button
-          type="button"
-          onClick={limparFiltros}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Limpar filtros
-        </button>
-      </div>
+      <LeadFiltersBar filters={filters} />
 
       <div className="rounded-xl bg-card shadow-sm">
         <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_0.8fr] gap-2 border-b border-gray-200 px-4 py-3 text-xs font-semibold uppercase text-gray-500">

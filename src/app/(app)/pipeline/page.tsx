@@ -15,7 +15,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
 import { LeadDrawer } from '@/components/LeadDrawer';
+import { LeadFiltersBar } from '@/components/LeadFiltersBar';
 import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
+import { useLeadFilters } from '@/hooks/useLeadFilters';
 
 // As colunas do Pipeline são geradas a partir de ESTAGIO_CONFIG (StatusBadge.tsx), que contém
 // exatamente os valores aceitos pela constraint CHECK de estagio_lead no banco. Não adicione um
@@ -102,7 +104,7 @@ function Column({ id, label, color, leads, onOpenLead }: ColumnProps) {
       </div>
 
       <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2">
+        <div className="flex max-h-[min(820px,calc(100vh-250px))] min-h-[120px] flex-col gap-2 overflow-y-auto pr-1">
           {leads.map((lead) => (
             <LeadCard key={lead.id} lead={lead} onOpen={onOpenLead} />
           ))}
@@ -118,6 +120,8 @@ export default function PipelinePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState<string>('Usuário');
+  const filters = useLeadFilters(leads);
+  const { leadsFiltrados } = filters;
 
   useEffect(() => {
     async function fetchUsuario() {
@@ -173,19 +177,23 @@ export default function PipelinePage() {
 
   const leadsPorColuna = useMemo(() => {
     const map = new Map<ColunaId, BaseDeLeads[]>(COLUNAS.map((c) => [c.id, []]));
-    leads.forEach((lead) => {
+    leadsFiltrados.forEach((lead) => {
       const coluna = normalizeEstagio(lead.estagio_lead);
       map.get(coluna)?.push(lead);
     });
     return map;
-  }, [leads]);
+  }, [leadsFiltrados]);
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over) return;
 
     const leadId = Number(active.id);
-    const novoEstagio = over.id as ColunaId;
+    const overId = over.id;
+    const colunaDireta = COLUNAS.find((c) => c.id === overId)?.id;
+    const leadDestino = leads.find((l) => l.id === Number(overId));
+    const novoEstagio = colunaDireta ?? (leadDestino ? normalizeEstagio(leadDestino.estagio_lead) : null);
+    if (!novoEstagio) return;
 
     const leadAtual = leads.find((l) => l.id === leadId);
     if (!leadAtual) return;
@@ -244,12 +252,16 @@ export default function PipelinePage() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Pipeline</h1>
-        <p className="text-sm text-gray-500">Arraste os cards entre as etapas do funil</p>
+        <p className="text-sm text-gray-500">
+          {leadsFiltrados.length} lead(s) exibido(s). Arraste os cards entre as etapas do funil
+        </p>
       </div>
 
       {errorMessage && (
         <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{errorMessage}</div>
       )}
+
+      <LeadFiltersBar filters={filters} />
 
       {loading ? (
         <p className="text-sm text-gray-500">Carregando...</p>
