@@ -119,6 +119,8 @@ export function LeadDrawer({
     } else {
       await supabase.from('lead_etiquetas').insert({ id_lead: lead.id, id_etiqueta: idEtiqueta });
     }
+
+    window.dispatchEvent(new CustomEvent('lead-etiquetas-updated', { detail: { leadId: lead.id } }));
   }
 
   async function salvarObservacao() {

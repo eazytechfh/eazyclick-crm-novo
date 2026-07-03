@@ -1,3 +1,6 @@
+'use client';
+
+import { useMemo, useState } from 'react';
 import { PillFilter } from '@/components/PillFilter';
 import {
   EXPEDIENTE_OPTIONS,
@@ -10,6 +13,14 @@ interface LeadFiltersBarProps {
 }
 
 export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
+  const [etiquetasOpen, setEtiquetasOpen] = useState(false);
+  const etiquetaSelecionada = useMemo(
+    () =>
+      filters.etiquetasDisponiveis.find((etiqueta) => String(etiqueta.id) === filters.etiquetaFiltro) ??
+      null,
+    [filters.etiquetaFiltro, filters.etiquetasDisponiveis]
+  );
+
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl bg-card p-4 shadow-sm">
       <input
@@ -58,6 +69,58 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
           </option>
         ))}
       </select>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setEtiquetasOpen((open) => !open)}
+          className="flex min-w-[190px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: etiquetaSelecionada?.cor ?? '#d1d5db' }}
+            />
+            <span className="truncate">{etiquetaSelecionada?.nome ?? 'Todas as etiquetas'}</span>
+          </span>
+          <span className="text-xs text-gray-400">v</span>
+        </button>
+
+        {etiquetasOpen && (
+          <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-full min-w-[220px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <button
+              type="button"
+              onClick={() => {
+                filters.setEtiquetaFiltro('todas');
+                setEtiquetasOpen(false);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />
+              Todas as etiquetas
+            </button>
+
+            {filters.etiquetasDisponiveis.map((etiqueta) => (
+              <button
+                key={etiqueta.id}
+                type="button"
+                onClick={() => {
+                  filters.setEtiquetaFiltro(String(etiqueta.id));
+                  setEtiquetasOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: etiqueta.cor }} />
+                <span className="truncate">{etiqueta.nome}</span>
+              </button>
+            ))}
+
+            {filters.etiquetasDisponiveis.length === 0 && (
+              <p className="px-3 py-2 text-xs text-gray-400">Nenhuma etiqueta cadastrada.</p>
+            )}
+          </div>
+        )}
+      </div>
 
       <PillFilter options={PERIODO_OPTIONS} selected={filters.periodo} onChange={filters.setPeriodo} />
       <PillFilter
