@@ -26,6 +26,11 @@ function classificacaoSerasa(score: number | null): { label: string; color: stri
   return { label: 'Excelente', color: '#22c55e' };
 }
 
+function telefoneParaWhatsapp(telefone: string | null | undefined): string | null {
+  const numero = telefone?.replace(/\D/g, '') ?? '';
+  return numero ? `https://wa.me/${numero}` : null;
+}
+
 interface LeadDrawerProps {
   lead: BaseDeLeads;
   estagioLabel: string;
@@ -174,6 +179,7 @@ export function LeadDrawer({
   const idade = calcularIdade(campos.data_nascimento || null);
   const serasa = classificacaoSerasa(lead.score_serasa);
   const dentroExpediente = isDentroExpediente(new Date(lead.created_at));
+  const whatsappUrl = telefoneParaWhatsapp(lead.telefone);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -185,6 +191,16 @@ export function LeadDrawer({
             <div>
               <p className="text-base font-semibold text-foreground">{lead.nome_lead}</p>
               <p className="text-sm text-gray-500">{lead.telefone}</p>
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                >
+                  Abrir WhatsApp
+                </a>
+              )}
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <span
                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
