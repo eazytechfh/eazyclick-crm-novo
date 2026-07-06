@@ -263,7 +263,7 @@ export default function PipelinePage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, follow_manual, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes'
         )
         .order('created_at', { ascending: false });
 
@@ -310,10 +310,22 @@ export default function PipelinePage() {
     const estagioAnterior = leadAtual.estagio_lead;
     if (normalizeEstagio(estagioAnterior) === novoEstagio) return;
 
+    const entrandoEmFollowUp = novoEstagio === 'follow_up';
+    const saindoDeFollowUp = normalizeEstagio(estagioAnterior) === 'follow_up' && !entrandoEmFollowUp;
+    const followManual = entrandoEmFollowUp ? 'ativo' : saindoDeFollowUp ? 'inativo' : undefined;
+
     // Optimistic update: atualiza a UI imediatamente para dar sensação de resposta instantânea
     // no drag and drop, antes mesmo de confirmar a escrita no banco.
     setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, estagio_lead: novoEstagio } : l))
+      prev.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              estagio_lead: novoEstagio,
+              ...(followManual ? { follow_manual: followManual } : {}),
+            }
+          : l
+      )
     );
 
     // Ao entrar em "em_negociacao" inicia o cronômetro de 30min; ao sair, limpa o prazo para
@@ -348,7 +360,11 @@ export default function PipelinePage() {
 
     let { error } = await supabase
       .from('BASE_DE_LEADS')
-      .update({ estagio_lead: novoEstagio, ...camposNegociacaoCompletos })
+      .update({
+        estagio_lead: novoEstagio,
+        ...camposNegociacaoCompletos,
+        ...(followManual ? { follow_manual: followManual } : {}),
+      })
       .eq('id', leadId);
 
     // Fallback: as colunas de status de notificação (migration 0009) ainda não existem nesse
@@ -366,7 +382,11 @@ export default function PipelinePage() {
 
       ({ error } = await supabase
         .from('BASE_DE_LEADS')
-        .update({ estagio_lead: novoEstagio, ...camposBasicos })
+        .update({
+          estagio_lead: novoEstagio,
+          ...camposBasicos,
+          ...(followManual ? { follow_manual: followManual } : {}),
+        })
         .eq('id', leadId));
     }
 
@@ -386,6 +406,7 @@ export default function PipelinePage() {
       estagio_novo: novoEstagio,
       usuario: nomeUsuario,
     });
+
   }
 
   return (

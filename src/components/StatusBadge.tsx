@@ -19,7 +19,7 @@ export const ESTAGIO_CONFIG: Record<string, StatusConfig> = {
   follow_up: { label: 'Follow-up', color: '#a855f7' },
   fechado: { label: 'Fechado', color: '#16a34a' },
   nao_fechou: { label: 'Não Fechou', color: '#ef4444' },
-  pesquisa_atendimento: { label: 'Pesquisa de Atendimento', color: '#06b6d4' },
+  pesquisa_atendimento: { label: 'Lembrete Interno', color: '#06b6d4' },
 };
 
 const DEFAULT_CONFIG: StatusConfig = { label: 'Desconhecido', color: '#6b7280' };
