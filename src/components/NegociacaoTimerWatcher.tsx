@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Cargo } from '@/types/database';
+import type { BaseDeLeads, Cargo } from '@/types/database';
 import { formatContagem } from '@/lib/negociacao/tempo';
 import { statusAtendimentoDoLead, type StatusAtendimento } from '@/lib/negociacao/etiquetasAtendimento';
+import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
+import { LeadDrawer } from '@/components/LeadDrawer';
 
 // Watcher client-side do cronômetro de 30min de "Em Negociação":
 // - Faz polling (20s) dos leads ativos nesse estágio e mantém um painel flutuante com a
@@ -30,6 +32,8 @@ interface LeadNegociacao {
 
 const INTERVALO_POLL_MS = 20_000;
 const INTERVALO_TICK_MS = 1_000;
+const LEAD_COMPLETO_SELECT =
+  'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes, negociacao_notificacao_status, negociacao_notificacao_tentativas, negociacao_notificacao_erro, negociacao_notificacao_reivindicada_em';
 
 interface NegociacaoTimerWatcherProps {
   userCargo: Cargo;
@@ -85,6 +89,7 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
   const [minimizado, setMinimizado] = useState(false);
   const [dispensados, setDispensados] = useState<Set<string>>(new Set());
   const [leadPopup, setLeadPopup] = useState<LeadNegociacao | null>(null);
+  const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [estendendo, setEstendendo] = useState(false);
   const [leadParaExcluir, setLeadParaExcluir] = useState<LeadNegociacao | null>(null);
 
@@ -220,6 +225,34 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
     setLeadPopup(null);
   }
 
+  async function abrirLeadCompleto(lead: LeadNegociacao) {
+    const chave = `${lead.id}:${lead.negociacao_expira_em}`;
+    setDispensados((prev) => new Set(prev).add(chave));
+    setLeadPopup(null);
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('BASE_DE_LEADS')
+      .select(LEAD_COMPLETO_SELECT)
+      .eq('id', lead.id)
+      .single();
+
+    if (error) {
+      console.error('Erro ao abrir lead:', error.message);
+      return;
+    }
+
+    setLeadSelecionado(data as unknown as BaseDeLeads);
+  }
+
+  function estagioLabelOf(estagio: string | null | undefined) {
+    return ESTAGIO_CONFIG[(estagio ?? '').toLowerCase().trim()]?.label ?? 'Desconhecido';
+  }
+
+  function estagioColorOf(estagio: string | null | undefined) {
+    return ESTAGIO_CONFIG[(estagio ?? '').toLowerCase().trim()]?.color ?? '#6b7280';
+  }
+
   async function estenderPrazo(lead: LeadNegociacao) {
     setEstendendo(true);
     const supabase = createClient();
@@ -279,7 +312,14 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
           <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg">
             <h2 className="text-lg font-bold text-foreground">Tempo de negociação esgotado</h2>
             <p className="mt-2 text-sm text-gray-600">
-              O lead <span className="font-medium">{leadPopup.nome_lead}</span>
+              O lead{' '}
+              <button
+                type="button"
+                onClick={() => abrirLeadCompleto(leadPopup)}
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                {leadPopup.nome_lead}
+              </button>
               {leadPopup.vendedor && (
                 <>
                   {' '}
@@ -422,6 +462,32 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
           </div>
         )}
       </div>
+
+      {leadSelecionado && (
+        <LeadDrawer
+          lead={leadSelecionado}
+          estagioLabel={estagioLabelOf(leadSelecionado.estagio_lead)}
+          estagioColor={estagioColorOf(leadSelecionado.estagio_lead)}
+          estagioLabelOf={estagioLabelOf}
+          onClose={() => setLeadSelecionado(null)}
+          onUpdated={(atualizado) => {
+            setLeadSelecionado(atualizado);
+            setNegociacoes((prev) =>
+              prev.map((lead) =>
+                lead.id === atualizado.id
+                  ? {
+                      ...lead,
+                      nome_lead: atualizado.nome_lead,
+                      vendedor: atualizado.vendedor,
+                      negociacao_expira_em: atualizado.negociacao_expira_em ?? lead.negociacao_expira_em,
+                      negociacao_extensoes: atualizado.negociacao_extensoes,
+                    }
+                  : lead
+              )
+            );
+          }}
+        />
+      )}
     </>
   );
 }
