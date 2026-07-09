@@ -108,6 +108,7 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
         data_nascimento: form.data_nascimento || null,
         score_serasa: form.score_serasa ? Number(form.score_serasa) : null,
         estagio_lead: form.estagio_lead,
+        follow_manual: form.estagio_lead === 'follow_up' ? 'ativo' : 'inativo',
         resumo_comercial: form.resumo_comercial.trim() || null,
         observacao_vendedor: form.observacao_vendedor.trim() || null,
         ...(entrandoEmNegociacao && {

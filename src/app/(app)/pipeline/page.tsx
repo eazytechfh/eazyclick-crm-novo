@@ -310,9 +310,7 @@ export default function PipelinePage() {
     const estagioAnterior = leadAtual.estagio_lead;
     if (normalizeEstagio(estagioAnterior) === novoEstagio) return;
 
-    const entrandoEmFollowUp = novoEstagio === 'follow_up';
-    const saindoDeFollowUp = normalizeEstagio(estagioAnterior) === 'follow_up' && !entrandoEmFollowUp;
-    const followManual = entrandoEmFollowUp ? 'ativo' : saindoDeFollowUp ? 'inativo' : undefined;
+    const followManual = novoEstagio === 'follow_up' ? 'ativo' : 'inativo';
 
     // Optimistic update: atualiza a UI imediatamente para dar sensação de resposta instantânea
     // no drag and drop, antes mesmo de confirmar a escrita no banco.
@@ -322,7 +320,7 @@ export default function PipelinePage() {
           ? {
               ...l,
               estagio_lead: novoEstagio,
-              ...(followManual ? { follow_manual: followManual } : {}),
+              follow_manual: followManual,
             }
           : l
       )
@@ -363,7 +361,7 @@ export default function PipelinePage() {
       .update({
         estagio_lead: novoEstagio,
         ...camposNegociacaoCompletos,
-        ...(followManual ? { follow_manual: followManual } : {}),
+        follow_manual: followManual,
       })
       .eq('id', leadId);
 
@@ -385,7 +383,7 @@ export default function PipelinePage() {
         .update({
           estagio_lead: novoEstagio,
           ...camposBasicos,
-          ...(followManual ? { follow_manual: followManual } : {}),
+          follow_manual: followManual,
         })
         .eq('id', leadId));
     }
