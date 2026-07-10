@@ -20,7 +20,8 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { KpiCard } from '@/components/KpiCard';
 import { PillFilter, type PillOption } from '@/components/PillFilter';
-import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { etapaDe } from '@/lib/pipeline-etapas';
 import { isDentroExpediente } from '@/lib/expediente';
 
 type Periodo = 'hoje' | 'ontem' | '7d' | '30d' | '90d';
@@ -89,6 +90,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<Periodo>('7d');
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const { etapas } = usePipelineEtapas();
 
   useEffect(() => {
     let isMounted = true;
@@ -226,11 +228,11 @@ export default function DashboardPage() {
       .map(([estagio, total]) => ({
         estagio,
         total,
-        label: ESTAGIO_CONFIG[estagio]?.label ?? estagio,
-        color: ESTAGIO_CONFIG[estagio]?.color ?? '#6b7280',
+        label: etapaDe(estagio, etapas).nome,
+        color: etapaDe(estagio, etapas).cor,
       }))
       .sort((a, b) => b.total - a.total);
-  }, [leadsNoPeriodo]);
+  }, [etapas, leadsNoPeriodo]);
 
   const veiculosMaisProcurados = useMemo(() => {
     const map = new Map<string, number>();

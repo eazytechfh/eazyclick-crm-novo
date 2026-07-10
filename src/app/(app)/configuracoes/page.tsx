@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Cargo, Etiqueta, Profile, Vendedor } from '@/types/database';
+import type { Cargo, Etiqueta, PipelineEtapa, Profile, Vendedor } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
+import { etapaProtegida, normalizarSlug } from '@/lib/pipeline-etapas';
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
 
-type Tab = 'novo-usuario' | 'usuarios' | 'etiquetas' | 'fila' | 'credenciais' | 'aparencia';
+type Tab = 'novo-usuario' | 'usuarios' | 'etiquetas' | 'etapas' | 'fila' | 'credenciais' | 'aparencia';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'novo-usuario', label: 'Criar novo usuário' },
   { id: 'usuarios', label: 'Gerenciar usuários' },
   { id: 'etiquetas', label: 'Etiquetas' },
+  { id: 'etapas', label: 'Etapas do pipeline' },
   { id: 'fila', label: 'Fila de atendimento' },
   { id: 'credenciais', label: 'Credenciais' },
   { id: 'aparencia', label: 'Aparência' },
@@ -79,11 +82,67 @@ export default function ConfiguracoesPage() {
       {tab === 'novo-usuario' && <CriarUsuarioTab />}
       {tab === 'usuarios' && <GerenciarUsuariosTab />}
       {tab === 'etiquetas' && <EtiquetasTab />}
+      {tab === 'etapas' && <PipelineEtapasTab podeEditar={!!podeGerenciarUsuarios} />}
       {tab === 'fila' && <FilaAtendimentoTab />}
       {tab === 'credenciais' && isAdminMaster && <CredenciaisTab />}
       {tab === 'aparencia' && isAdminMaster && <AparenciaTab />}
     </div>
   );
+}
+
+function PipelineEtapasTab({ podeEditar: podeEditarPipeline }: { podeEditar: boolean }) {
+  const { etapas, setEtapas, recarregarEtapas } = usePipelineEtapas();
+  const [nome, setNome] = useState('');
+  const [cor, setCor] = useState('#3b82f6');
+  const [ocupado, setOcupado] = useState(false);
+  const [mensagem, setMensagem] = useState<string | null>(null);
+  const supabase = useMemo(() => createClient(), []);
+  const etapasEditaveis = etapas.filter((etapa) => !etapaProtegida(etapa.slug));
+
+  async function criar(e: React.FormEvent) {
+    e.preventDefault(); const n = nome.trim(); const slug = normalizarSlug(n);
+    if (!n || !slug) return setMensagem('Informe um nome válido.');
+    setOcupado(true); setMensagem(null);
+    const { error } = await supabase.from('pipeline_etapas').insert({ slug, nome: n, cor, ordem: etapas.length });
+    if (error) setMensagem(error.code === '23505' ? 'Já existe uma etapa com esse identificador.' : error.message);
+    else { setNome(''); await recarregarEtapas(); }
+    setOcupado(false);
+  }
+  async function salvar(etapa: PipelineEtapa) {
+    if (etapaProtegida(etapa.slug)) return setMensagem('Esta etapa e protegida por automacoes e nao pode ser editada.');
+    if (!etapa.nome.trim()) return setMensagem('O nome não pode ficar vazio.');
+    setOcupado(true); const { error } = await supabase.from('pipeline_etapas').update({ nome: etapa.nome.trim(), cor: etapa.cor }).eq('id', etapa.id);
+    setMensagem(error?.message ?? 'Etapa atualizada. O identificador interno permaneceu estável.'); setOcupado(false);
+  }
+  async function remover(etapa: PipelineEtapa) {
+    if (etapaProtegida(etapa.slug)) return setMensagem('Esta etapa e protegida por automacoes e nao pode ser removida.');
+    if (!confirm(`Excluir a etapa “${etapa.nome}”?`)) return;
+    setOcupado(true); const { error } = await supabase.from('pipeline_etapas').delete().eq('id', etapa.id);
+    setMensagem(error?.message ?? null); if (!error) await recarregarEtapas(); setOcupado(false);
+  }
+  async function mover(index: number, delta: number) {
+    const destino = index + delta; if (destino < 0 || destino >= etapas.length) return;
+    if (etapaProtegida(etapas[index]?.slug) || etapaProtegida(etapas[destino]?.slug)) {
+      setMensagem('Etapas protegidas nao podem ser reordenadas.');
+      return;
+    }
+    const novas = [...etapas]; [novas[index], novas[destino]] = [novas[destino], novas[index]]; setEtapas(novas);
+    setOcupado(true); const { error } = await supabase.rpc('reordenar_pipeline_etapas', { p_ids: novas.map((e) => e.id) });
+    if (error) { setMensagem(error.message); await recarregarEtapas(); } setOcupado(false);
+  }
+  return <div className="max-w-2xl space-y-4">
+    <p className="text-sm text-gray-500">Nome e cor são personalizáveis. O identificador interno é estável para preservar leads e integrações.</p>
+    {podeEditarPipeline && <form onSubmit={criar} className="flex gap-2"><input value={nome} maxLength={60} onChange={(e)=>setNome(e.target.value)} placeholder="Nova etapa" className="flex-1 rounded-lg border px-3 py-2 text-sm"/><input type="color" value={cor} onChange={(e)=>setCor(e.target.value)} /><button disabled={ocupado || !nome.trim()} className="rounded-lg bg-primary px-4 text-sm text-white disabled:opacity-50">Criar</button></form>}
+    {mensagem && <p className="text-sm text-gray-700">{mensagem}</p>}
+    <div className="space-y-2">{etapasEditaveis.map((etapa,index)=>{
+      const podeEditar = podeEditarPipeline;
+      const podeEditarEtapa = podeEditar;
+      return <div key={etapa.id} className="flex items-center gap-2 rounded-lg border bg-white p-3">
+      <input disabled={!podeEditarEtapa||ocupado} value={etapa.nome} maxLength={60} onChange={(e)=>setEtapas(etapas.map(x=>x.id===etapa.id?{...x,nome:e.target.value}:x))} className="min-w-0 flex-1 rounded border px-2 py-1 text-sm disabled:bg-gray-50 disabled:text-gray-500"/>
+      <input disabled={!podeEditarEtapa||ocupado} type="color" value={etapa.cor} onChange={(e)=>setEtapas(etapas.map(x=>x.id===etapa.id?{...x,cor:e.target.value}:x))}/>
+      {podeEditar && <><button disabled={ocupado||index===0} onClick={()=>mover(etapas.findIndex((e)=>e.id===etapa.id), etapas.findIndex((e)=>e.id===etapasEditaveis[index-1]?.id)-etapas.findIndex((e)=>e.id===etapa.id))} aria-label="Mover para a esquerda">←</button><button disabled={ocupado||index===etapasEditaveis.length-1} onClick={()=>mover(etapas.findIndex((e)=>e.id===etapa.id), etapas.findIndex((e)=>e.id===etapasEditaveis[index+1]?.id)-etapas.findIndex((e)=>e.id===etapa.id))} aria-label="Mover para a direita">→</button><button disabled={ocupado} onClick={()=>salvar(etapa)} className="text-sm text-blue-600">Salvar</button><button disabled={ocupado} onClick={()=>remover(etapa)} className="text-sm text-red-600">Excluir</button></>}
+    </div>})}</div>
+  </div>;
 }
 
 function CriarUsuarioTab() {

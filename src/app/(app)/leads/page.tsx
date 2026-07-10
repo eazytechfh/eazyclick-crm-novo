@@ -7,16 +7,13 @@ import { ptBR } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
-import { StatusBadge, ESTAGIO_CONFIG } from '@/components/StatusBadge';
+import { StatusBadge } from '@/components/StatusBadge';
 import { LeadFiltersBar } from '@/components/LeadFiltersBar';
 import { NovoLeadModal } from '@/components/NovoLeadModal';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
-
-function getEstagioConfig(estagio: string) {
-  const key = estagio.toLowerCase().trim();
-  return ESTAGIO_CONFIG[key] ?? { label: 'Oportunidade', color: '#22c55e' };
-}
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { etapaDe } from '@/lib/pipeline-etapas';
 
 const ORIGEM_DOT_COLORS: Record<string, string> = {
   whatsapp: '#22c55e',
@@ -36,6 +33,7 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [modalNovoLeadAberto, setModalNovoLeadAberto] = useState(false);
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
+  const { etapas } = usePipelineEtapas();
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
 
@@ -182,7 +180,7 @@ export default function LeadsPage() {
                     </div>
                     <span className="truncate text-sm text-gray-700">{lead.vendedor ?? '—'}</span>
                     <span className="truncate text-sm text-gray-700">{lead.veiculo_interesse ?? '—'}</span>
-                    <StatusBadge estagio={lead.estagio_lead} />
+                    <StatusBadge estagio={lead.estagio_lead} etapas={etapas} />
                     <span className="text-sm font-medium text-foreground">
                       {lead.valor != null ? currencyFormatter.format(lead.valor) : '—'}
                     </span>
@@ -207,9 +205,9 @@ export default function LeadsPage() {
       {leadSelecionado && (
         <LeadDrawer
           lead={leadSelecionado}
-          estagioLabel={getEstagioConfig(leadSelecionado.estagio_lead).label}
-          estagioColor={getEstagioConfig(leadSelecionado.estagio_lead).color}
-          estagioLabelOf={(estagio) => getEstagioConfig(estagio).label}
+          estagioLabel={etapaDe(leadSelecionado.estagio_lead, etapas).nome}
+          estagioColor={etapaDe(leadSelecionado.estagio_lead, etapas).cor}
+          estagioLabelOf={(estagio) => etapaDe(estagio, etapas).nome}
           onClose={() => setLeadSelecionado(null)}
           onUpdated={(atualizado) => {
             setLeadSelecionado(atualizado);
