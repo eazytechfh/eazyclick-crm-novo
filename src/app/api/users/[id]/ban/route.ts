@@ -49,10 +49,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: profileError.message }, { status: 400 });
   }
 
-  // VENDEDORES não tem FK para profiles (é uma tabela separada, vinculada só pelo nome). Ao
-  // desativar um vendedor, removemos o registro de lá para ele sair da fila de atendimento
-  // (uazapi/bot não distribui mais leads pra ele). Ao reativar, recriamos o registro do zero
-  // sempre como "espera" — ele entra no fim da fila, não na posição que tinha antes.
+  // VENDEDORES não tem FK para profiles (é uma tabela separada, vinculada só pelo nome).
+  // Preservamos o registro e sua contagem ao desativar; ATIVO=false o retira da distribuição
+  // sem apagar o histórico operacional.
   const { data: targetProfile } = await admin
     .from('profiles')
     .select('cargo, nome')
@@ -64,7 +63,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   if (targetCargo === 'vendedor' && targetNome) {
     if (desativar) {
-      await admin.from('VENDEDORES').delete().eq('vendedor', targetNome);
+      await admin
+        .from('VENDEDORES')
+        .update({ ATIVO: 'false', Atender: 'espera' })
+        .eq('vendedor', targetNome);
     } else {
       const { data: existente } = await admin
         .from('VENDEDORES')
@@ -72,15 +74,29 @@ export async function POST(request: Request, { params }: { params: { id: string 
         .eq('vendedor', targetNome)
         .maybeSingle();
 
-      if (!existente) {
+      if (existente) {
+        await admin
+          .from('VENDEDORES')
+          .update({ ATIVO: 'true', Atender: 'espera' })
+          .eq('id', existente.id);
+      } else {
         const { data: authUser } = await admin.auth.admin.getUserById(params.id);
         const telefone = (authUser.user?.user_metadata as { telefone?: string } | undefined)?.telefone ?? null;
+        const { data: empresaExistente } = await admin
+          .from('VENDEDORES')
+          .select('id_empresa')
+          .not('id_empresa', 'is', null)
+          .limit(1)
+          .maybeSingle();
 
         await admin.from('VENDEDORES').insert({
           vendedor: targetNome,
+          email: authUser.user?.email ?? null,
           telefone,
-          atender: 'espera',
-          quantos_lead: 0,
+          id_empresa: empresaExistente?.id_empresa ?? 1,
+          'Atender': 'espera',
+          'Quantos lead': 0,
+          ATIVO: 'true',
         });
       }
     }

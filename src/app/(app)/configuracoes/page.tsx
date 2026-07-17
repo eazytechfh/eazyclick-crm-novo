@@ -6,6 +6,7 @@ import type { Cargo, Etiqueta, PipelineEtapa, Profile, Vendedor } from '@/types/
 import { Avatar } from '@/components/Avatar';
 import { etapaProtegida, normalizarSlug } from '@/lib/pipeline-etapas';
 import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { SELECT_VENDEDORES } from '@/lib/vendedores';
 
 type Tab = 'novo-usuario' | 'usuarios' | 'etiquetas' | 'etapas' | 'fila' | 'credenciais' | 'aparencia';
 
@@ -541,7 +542,7 @@ function FilaAtendimentoTab() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from('VENDEDORES')
-        .select('id, created_at, vendedor, telefone, atender, quantos_lead, id_click, id_empresa')
+        .select(SELECT_VENDEDORES)
         .order('id', { ascending: true });
 
       if (error) {
@@ -562,9 +563,12 @@ function FilaAtendimentoTab() {
   // a próxima rodada. A ordem de espera segue o id de cadastro (não há coluna de posição
   // explícita na tabela hoje).
   const normalizado = (v: string | null) => (v ?? '').toLowerCase().trim();
-  const daVez = vendedores.filter((v) => normalizado(v.atender) === 'vez');
-  const emEspera = vendedores.filter((v) => normalizado(v.atender) === 'espera');
-  const outros = vendedores.filter(
+  const estaAtivo = (v: Vendedor) => ['true', '1', 'sim', 'ativo'].includes(normalizado(v.ativo));
+  const ativos = vendedores.filter(estaAtivo);
+  const inativos = vendedores.filter((v) => !estaAtivo(v));
+  const daVez = ativos.filter((v) => normalizado(v.atender) === 'vez');
+  const emEspera = ativos.filter((v) => normalizado(v.atender) === 'espera');
+  const outros = ativos.filter(
     (v) => !['vez', 'espera'].includes(normalizado(v.atender))
   );
 
@@ -648,6 +652,28 @@ function FilaAtendimentoTab() {
           </ul>
         </section>
       )}
+
+      <section>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          Inativos ou removidos da fila
+        </h2>
+        {inativos.length === 0 ? (
+          <p className="text-sm text-gray-400">Nenhum vendedor inativo cadastrado.</p>
+        ) : (
+          <ul className="space-y-2">
+            {inativos.map((v) => (
+              <li key={v.id} className="flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-3">
+                <Avatar name={v.vendedor ?? '?'} size={32} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground">{v.vendedor}</p>
+                  <p className="text-xs text-gray-500">{v.telefone ?? '—'}</p>
+                </div>
+                <span className="text-xs text-red-600">Inativo</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {vendedores.length === 0 && (
         <p className="text-sm text-gray-400">Nenhum vendedor cadastrado ainda.</p>

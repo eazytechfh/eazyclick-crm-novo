@@ -21,6 +21,7 @@ import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
 import { etapaDe } from '@/lib/pipeline-etapas';
 import { formatContagem } from '@/lib/negociacao/tempo';
 import { statusAtendimentoDoLead, type StatusAtendimento } from '@/lib/negociacao/etiquetasAtendimento';
+import { carregarTodosLeads } from '@/lib/leads/carregar-leads';
 
 const TICK_MS = 1_000;
 
@@ -204,6 +205,7 @@ function Column({ id, label, color, configurada, leads, onOpenLead, agora, statu
 export default function PipelinePage() {
   const [leads, setLeads] = useState<BaseDeLeads[]>([]);
   const [loading, setLoading] = useState(true);
+  const [duplicadosRemovidos, setDuplicadosRemovidos] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState<string>('Usuário');
@@ -274,20 +276,21 @@ export default function PipelinePage() {
     async function fetchLeads() {
       setLoading(true);
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('BASE_DE_LEADS')
-        .select(
+      const { leads: data, duplicadosRemovidos: removidos, error } =
+        await carregarTodosLeads<BaseDeLeads>(
+          supabase,
           'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, follow_manual, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes'
-        )
-        .order('created_at', { ascending: false });
+        );
 
       if (!isMounted) return;
 
       if (error) {
         console.error('Erro ao buscar leads:', error.message);
         setLeads([]);
+        setDuplicadosRemovidos(0);
       } else {
-        setLeads((data as unknown as BaseDeLeads[]) ?? []);
+        setLeads(data);
+        setDuplicadosRemovidos(removidos);
       }
       setLoading(false);
     }
@@ -429,6 +432,11 @@ export default function PipelinePage() {
         <p className="text-sm text-gray-500">
           {leadsFiltrados.length} lead(s) exibido(s). Arraste os cards entre as etapas do funil
         </p>
+        {!loading && (
+          <p className="text-xs text-amber-600">
+            {duplicadosRemovidos} lead(s) duplicado(s) removido(s) da exibição.
+          </p>
+        )}
       </div>
 
       {errorMessage && (

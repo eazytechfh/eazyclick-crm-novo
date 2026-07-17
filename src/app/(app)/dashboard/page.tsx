@@ -23,6 +23,7 @@ import { PillFilter, type PillOption } from '@/components/PillFilter';
 import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
 import { etapaDe } from '@/lib/pipeline-etapas';
 import { isDentroExpediente } from '@/lib/expediente';
+import { carregarTodosLeads } from '@/lib/leads/carregar-leads';
 
 type Periodo = 'hoje' | 'ontem' | '7d' | '30d' | '90d';
 
@@ -88,6 +89,7 @@ function pctChange(current: number, previous: number): number {
 export default function DashboardPage() {
   const [leads, setLeads] = useState<BaseDeLeads[]>([]);
   const [loading, setLoading] = useState(true);
+  const [duplicadosRemovidos, setDuplicadosRemovidos] = useState(0);
   const [periodo, setPeriodo] = useState<Periodo>('7d');
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const { etapas } = usePipelineEtapas();
@@ -98,12 +100,11 @@ export default function DashboardPage() {
     async function fetchLeads() {
       setLoading(true);
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('BASE_DE_LEADS')
-        .select(
+      const { leads: data, duplicadosRemovidos: removidos, error } =
+        await carregarTodosLeads<BaseDeLeads>(
+          supabase,
           'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora"'
-        )
-        .order('created_at', { ascending: false });
+        );
 
       if (!isMounted) return;
 
@@ -111,8 +112,10 @@ export default function DashboardPage() {
         // Em ambiente sem Supabase real configurado, apenas registra o erro e segue com lista vazia.
         console.error('Erro ao buscar leads:', error.message);
         setLeads([]);
+        setDuplicadosRemovidos(0);
       } else {
-        setLeads((data as unknown as BaseDeLeads[]) ?? []);
+        setLeads(data);
+        setDuplicadosRemovidos(removidos);
       }
 
       setUpdatedAt(new Date());
@@ -264,6 +267,11 @@ export default function DashboardPage() {
               </span>
             )}
           </p>
+          {!loading && (
+            <p className="text-xs text-amber-600">
+              {duplicadosRemovidos} lead(s) duplicado(s) removido(s) da exibição.
+            </p>
+          )}
         </div>
         <PillFilter options={PERIODO_OPTIONS} selected={periodo} onChange={setPeriodo} />
       </div>
