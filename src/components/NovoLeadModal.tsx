@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads, Vendedor } from '@/types/database';
 import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
-import { SELECT_VENDEDORES } from '@/lib/vendedores';
 
 // Campos como "Etapa", QuemEnviouMsg, UltimaMensagem, Status de Follow, Transferencia,
 // Pesquisa de satisfação, ID CONTATO CLICK, lid, Data e Hora e bot_ativo são preenchidos pela
@@ -71,7 +70,7 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
       const supabase = createClient();
       const { data } = await supabase
         .from('VENDEDORES')
-        .select(SELECT_VENDEDORES)
+        .select('id, created_at, vendedor, telefone, atender, quantos_lead, id_click, id_empresa')
         .order('vendedor');
       if (isMounted) setVendedores((data as Vendedor[]) ?? []);
     }

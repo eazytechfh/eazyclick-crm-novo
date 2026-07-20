@@ -88,11 +88,10 @@ export interface Vendedor {
   id: number;
   created_at: string;
   vendedor: string | null;
-  email: string | null;
   telefone: string | null;
   atender: string | null;
   quantos_lead: number | null;
-  ativo: string | null;
+  id_click: string | null;
   id_empresa: string | null;
 }
 

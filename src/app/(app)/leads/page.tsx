@@ -14,7 +14,6 @@ import { LeadDrawer } from '@/components/LeadDrawer';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
 import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
 import { etapaDe } from '@/lib/pipeline-etapas';
-import { carregarTodosLeads } from '@/lib/leads/carregar-leads';
 
 const ORIGEM_DOT_COLORS: Record<string, string> = {
   whatsapp: '#22c55e',
@@ -32,7 +31,6 @@ function getOrigemColor(origem: string | null): string {
 export default function LeadsPage() {
   const [leads, setLeads] = useState<BaseDeLeads[]>([]);
   const [loading, setLoading] = useState(true);
-  const [duplicadosRemovidos, setDuplicadosRemovidos] = useState(0);
   const [modalNovoLeadAberto, setModalNovoLeadAberto] = useState(false);
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const { etapas } = usePipelineEtapas();
@@ -45,21 +43,20 @@ export default function LeadsPage() {
     async function fetchLeads() {
       setLoading(true);
       const supabase = createClient();
-      const { leads: data, duplicadosRemovidos: removidos, error } =
-        await carregarTodosLeads<BaseDeLeads>(
-          supabase,
+      const { data, error } = await supabase
+        .from('BASE_DE_LEADS')
+        .select(
           'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
-        );
+        )
+        .order('created_at', { ascending: false });
 
       if (!isMounted) return;
 
       if (error) {
         console.error('Erro ao buscar leads:', error.message);
         setLeads([]);
-        setDuplicadosRemovidos(0);
       } else {
-        setLeads(data);
-        setDuplicadosRemovidos(removidos);
+        setLeads((data as unknown as BaseDeLeads[]) ?? []);
       }
       setLoading(false);
     }
@@ -117,11 +114,6 @@ export default function LeadsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Leads</h1>
           <p className="text-sm text-gray-500">{leadsFiltrados.length} lead(s) encontrado(s)</p>
-          {!loading && (
-            <p className="text-xs text-amber-600">
-              {duplicadosRemovidos} lead(s) duplicado(s) removido(s) da exibição.
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <button

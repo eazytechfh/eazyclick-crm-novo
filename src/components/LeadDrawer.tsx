@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads, Etiqueta, LeadHistoricoEstagio, Vendedor } from '@/types/database';
-import { SELECT_VENDEDORES } from '@/lib/vendedores';
 import { Avatar } from '@/components/Avatar';
 import { isDentroExpediente } from '@/lib/expediente';
 
@@ -88,7 +87,7 @@ export function LeadDrawer({
         await Promise.all([
           supabase.from('etiquetas').select('id, nome, cor, created_at').order('nome'),
           supabase.from('lead_etiquetas').select('id_etiqueta').eq('id_lead', lead.id),
-          supabase.from('VENDEDORES').select(SELECT_VENDEDORES).order('vendedor'),
+          supabase.from('VENDEDORES').select('id, created_at, vendedor, telefone, atender, quantos_lead, id_click, id_empresa').order('vendedor'),
           supabase
             .from('lead_historico_estagio')
             .select('id, id_lead, estagio_anterior, estagio_novo, usuario, created_at')
