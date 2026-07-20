@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:sync-lead-stages": "node --test scripts/sync-lead-stages-lib.test.js",
+    "sync:lead-stages": "node scripts/sync-lead-stages.js",
     "setup:sql": "node scripts/setup-sql.js",
     "setup:admin": "node scripts/create-admin.js"
   },
