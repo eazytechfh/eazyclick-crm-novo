@@ -51,6 +51,8 @@ export interface BaseDeLeads {
   cpf: string | null;
   data_nascimento: string | null;
   score_serasa: number | null;
+  /** IDs de etiquetas atribuídas ao lead; coluna sincronizada com public.lead_etiquetas. */
+  etiquetas: number[];
   follow_manual: 'ativo' | 'inativo' | string | null;
   /** Prazo do cronômetro de 30min de "Em Negociação"; null quando o lead não está nesse estágio. */
   negociacao_expira_em: string | null;
