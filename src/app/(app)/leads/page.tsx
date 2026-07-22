@@ -46,7 +46,7 @@ export default function LeadsPage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, bot_ativo_alterado_em, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
         )
         .order('created_at', { ascending: false });
 
@@ -212,6 +212,10 @@ export default function LeadsPage() {
           onUpdated={(atualizado) => {
             setLeadSelecionado(atualizado);
             setLeads((prev) => prev.map((l) => (l.id === atualizado.id ? atualizado : l)));
+          }}
+          onDeleted={(leadId) => {
+            setLeads((leadsAtuais) => leadsAtuais.filter((item) => item.id !== leadId));
+            setLeadSelecionado(null);
           }}
         />
       )}
