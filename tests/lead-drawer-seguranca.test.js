@@ -42,7 +42,7 @@ test('drawer controla IA sem otimismo e exibe timestamp seguro', () => {
 
 test('observacao so confirma depois do retorno validado do banco', () => {
   const drawer = read('src/components/LeadDrawer.tsx');
-  assert.match(drawer, /\.select\('id, observacao_vendedor'\)/);
+  assert.match(drawer, /\.select\('id, observacao_vendedor(?:,[^']*)?'\)/);
   assert.match(drawer, /finally[\s\S]*setSalvandoObservacao\(false\)/);
   assert.match(drawer, /Observação salva com sucesso/);
   assert.match(drawer, /Erro ao salvar observação/);

@@ -14,6 +14,7 @@ import { LeadDrawer } from '@/components/LeadDrawer';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
 import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
 import { etapaDe } from '@/lib/pipeline-etapas';
+import { AutomotiveLoading } from '@/components/AutomotiveLoading';
 
 const ORIGEM_DOT_COLORS: Record<string, string> = {
   whatsapp: '#22c55e',
@@ -61,9 +62,12 @@ export default function LeadsPage() {
       setLoading(false);
     }
 
+    const atualizarAtribuicoes = () => void fetchLeads();
     fetchLeads();
+    window.addEventListener('lead-assignments-changed', atualizarAtribuicoes);
     return () => {
       isMounted = false;
+      window.removeEventListener('lead-assignments-changed', atualizarAtribuicoes);
     };
   }, []);
 
@@ -146,7 +150,7 @@ export default function LeadsPage() {
         </div>
 
         {loading ? (
-          <p className="px-4 py-6 text-sm text-gray-500">Carregando...</p>
+          <AutomotiveLoading label="Carregando leads" />
         ) : leadsFiltrados.length === 0 ? (
           <p className="px-4 py-6 text-sm text-gray-500">Nenhum lead encontrado.</p>
         ) : (

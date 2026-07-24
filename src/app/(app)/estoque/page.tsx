@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import type { Estoque } from '@/types/database';
+import { AutomotiveLoading } from '@/components/AutomotiveLoading';
+import { normalizarStatusEstoque, type StatusEstoque } from '@/lib/crm-automotivo';
 
 function getImagens(veiculo: Estoque): string[] {
   return [veiculo.linkImagem0, veiculo.linkImagem1, veiculo.linkImagem2, veiculo.linkImagem3].filter(
@@ -34,9 +36,11 @@ export default function EstoquePage() {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
   const [marcaFiltro, setMarcaFiltro] = useState('todas');
-  const [statusFiltro, setStatusFiltro] = useState('todos');
+  const [statusFiltro, setStatusFiltro] = useState('disponivel');
   const [selecionado, setSelecionado] = useState<Estoque | null>(null);
   const [imagemIndex, setImagemIndex] = useState(0);
+  const [salvandoStatus, setSalvandoStatus] = useState(false);
+  const [erroStatus, setErroStatus] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -98,11 +102,6 @@ export default function EstoquePage() {
     () => Array.from(new Set(veiculos.map((v) => v.marca).filter((v): v is string => Boolean(v)))),
     [veiculos]
   );
-  const statusDisponiveis = useMemo(
-    () => Array.from(new Set(veiculos.map((v) => v.status).filter(Boolean))),
-    [veiculos]
-  );
-
   const veiculosFiltrados = useMemo(() => {
     return veiculos.filter((v) => {
       if (busca) {
@@ -114,7 +113,7 @@ export default function EstoquePage() {
         if (!matches) return false;
       }
       if (marcaFiltro !== 'todas' && v.marca !== marcaFiltro) return false;
-      if (statusFiltro !== 'todos' && v.status !== statusFiltro) return false;
+      if (statusFiltro !== 'todos' && normalizarStatusEstoque(v.status) !== statusFiltro) return false;
       return true;
     });
   }, [veiculos, busca, marcaFiltro, statusFiltro]);
@@ -122,6 +121,23 @@ export default function EstoquePage() {
   function abrirModal(veiculo: Estoque) {
     setSelecionado(veiculo);
     setImagemIndex(0);
+  }
+
+  async function alterarStatus(status: StatusEstoque) {
+    if (!selecionado || salvandoStatus) return;
+    setSalvandoStatus(true);
+    setErroStatus(null);
+    const supabase = createClient();
+    const { data, error } = await supabase.from('ESTOQUE').update({ status }).eq('id', selecionado.id)
+      .select('id, status').maybeSingle();
+    setSalvandoStatus(false);
+    if (error || !data || data.id !== selecionado.id || normalizarStatusEstoque(data.status) !== status) {
+      setErroStatus('Erro ao alterar o status. Tente novamente.');
+      return;
+    }
+    const atualizado = { ...selecionado, status };
+    setSelecionado(atualizado);
+    setVeiculos((atuais) => atuais.map((v) => v.id === atualizado.id ? atualizado : v));
   }
 
   const imagensModal = selecionado ? getImagens(selecionado) : [];
@@ -159,16 +175,14 @@ export default function EstoquePage() {
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
         >
           <option value="todos">Todos os status</option>
-          {statusDisponiveis.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
+          <option value="disponivel">Disponíveis</option>
+          <option value="indisponivel">Indisponíveis</option>
+          <option value="vendido">Vendidos</option>
         </select>
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Carregando...</p>
+        <AutomotiveLoading label="Carregando estoque" />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {veiculosFiltrados.map((veiculo) => {
@@ -274,6 +288,18 @@ export default function EstoquePage() {
             </p>
             <p className="text-sm text-gray-700">Motor: {selecionado.motor ?? '—'}</p>
             <p className="mt-2 text-lg font-bold text-foreground">{selecionado.valor ?? '—'}</p>
+            <label className="mt-4 block text-sm font-medium text-gray-700">
+              Status
+              <select value={normalizarStatusEstoque(selecionado.status) ?? 'indisponivel'}
+                onChange={(e) => void alterarStatus(e.target.value as StatusEstoque)}
+                disabled={salvandoStatus}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                <option value="disponivel">Disponível</option>
+                <option value="indisponivel">Indisponível</option>
+                <option value="vendido">Vendido</option>
+              </select>
+            </label>
+            {erroStatus && <p role="alert" className="mt-2 text-sm text-red-600">{erroStatus}</p>}
 
             <button
               type="button"

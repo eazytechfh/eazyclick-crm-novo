@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -21,6 +21,9 @@ import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
 import { etapaDe } from '@/lib/pipeline-etapas';
 import { formatContagem } from '@/lib/negociacao/tempo';
 import { statusAtendimentoDoLead, type StatusAtendimento } from '@/lib/negociacao/etiquetasAtendimento';
+import { AutomotiveLoading } from '@/components/AutomotiveLoading';
+import { SaleCelebration } from '@/components/SaleCelebration';
+import { validarFechamento } from '@/lib/crm-automotivo';
 
 const TICK_MS = 1_000;
 
@@ -208,6 +211,12 @@ export default function PipelinePage() {
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState<string>('Usuário');
   const [agora, setAgora] = useState(() => Date.now());
+  const [fechamentoPendente, setFechamentoPendente] = useState<BaseDeLeads | null>(null);
+  const [dadosFechamento, setDadosFechamento] = useState({ nome: '', valor: '' });
+  const [salvandoFechamento, setSalvandoFechamento] = useState(false);
+  const [errosFechamento, setErrosFechamento] = useState<string[]>([]);
+  const [celebracao, setCelebracao] = useState<string | null>(null);
+  const fecharCelebracao = useCallback(() => setCelebracao(null), []);
   const { etapas, erroEtapas } = usePipelineEtapas();
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
@@ -292,9 +301,12 @@ export default function PipelinePage() {
       setLoading(false);
     }
 
+    const atualizarAtribuicoes = () => void fetchLeads();
     fetchLeads();
+    window.addEventListener('lead-assignments-changed', atualizarAtribuicoes);
     return () => {
       isMounted = false;
+      window.removeEventListener('lead-assignments-changed', atualizarAtribuicoes);
     };
   }, []);
 
@@ -324,6 +336,13 @@ export default function PipelinePage() {
 
     const estagioAnterior = leadAtual.estagio_lead;
     if (normalizeEstagio(estagioAnterior) === novoEstagio) return;
+    if (novoEstagio === 'fechado') {
+      const validacao = validarFechamento(leadAtual.nome_lead, leadAtual.valor);
+      setFechamentoPendente(leadAtual);
+      setDadosFechamento({ nome: leadAtual.nome_lead ?? '', valor: leadAtual.valor ? String(leadAtual.valor) : '' });
+      setErrosFechamento(validacao.erros);
+      return;
+    }
 
     const followManual = novoEstagio === 'follow_up' ? 'ativo' : 'inativo';
 
@@ -422,6 +441,27 @@ export default function PipelinePage() {
 
   }
 
+  async function confirmarFechamento() {
+    if (!fechamentoPendente || salvandoFechamento) return;
+    const validacao = validarFechamento(dadosFechamento.nome, dadosFechamento.valor);
+    setErrosFechamento(validacao.erros);
+    if (!validacao.valido) return;
+    setSalvandoFechamento(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('fechar_venda', {
+      p_id_lead: fechamentoPendente.id, p_nome: validacao.nome, p_valor: validacao.valor,
+    });
+    setSalvandoFechamento(false);
+    const confirmado = (Array.isArray(data) ? data[0] : data) as BaseDeLeads | null;
+    if (error || !confirmado || confirmado.estagio_lead !== 'fechado') {
+      setErrosFechamento(['Não foi possível concluir a venda. Tente novamente.']);
+      return;
+    }
+    setLeads((atuais) => atuais.map((l) => l.id === confirmado.id ? { ...l, ...confirmado } : l));
+    setFechamentoPendente(null);
+    setCelebracao(confirmado.nome_lead);
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div>
@@ -444,7 +484,7 @@ export default function PipelinePage() {
       <LeadFiltersBar filters={filters} />
 
       {loading ? (
-        <p className="text-sm text-gray-500">Carregando...</p>
+        <AutomotiveLoading label="Carregando pipeline" />
       ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4">
@@ -488,6 +528,29 @@ export default function PipelinePage() {
           }}
         />
       )}
+      {fechamentoPendente && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="fechar-venda-titulo">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 id="fechar-venda-titulo" className="text-xl font-bold">Concluir venda</h2>
+            <p className="mt-1 text-sm text-gray-500">Confirme os dados obrigatórios antes de fechar.</p>
+            <label className="mt-4 block text-sm">Nome
+              <input value={dadosFechamento.nome} onChange={(e) => setDadosFechamento((d) => ({ ...d, nome: e.target.value }))}
+                className="mt-1 w-full rounded-lg border px-3 py-2" />
+            </label>
+            <label className="mt-3 block text-sm">Valor
+              <input type="number" min="0.01" step="0.01" value={dadosFechamento.valor}
+                onChange={(e) => setDadosFechamento((d) => ({ ...d, valor: e.target.value }))}
+                className="mt-1 w-full rounded-lg border px-3 py-2" />
+            </label>
+            {errosFechamento.length > 0 && <ul role="alert" className="mt-3 text-sm text-red-600">{errosFechamento.map((e) => <li key={e}>{e}</li>)}</ul>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={salvandoFechamento} onClick={() => setFechamentoPendente(null)} className="rounded-lg border px-4 py-2">Cancelar</button>
+              <button type="button" disabled={salvandoFechamento} onClick={() => void confirmarFechamento()} className="rounded-lg bg-primary px-4 py-2 text-white">{salvandoFechamento ? 'Salvando...' : 'Concluir venda'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {celebracao && <SaleCelebration leadName={celebracao} onClose={fecharCelebracao} />}
     </div>
   );
 }

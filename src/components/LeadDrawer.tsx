@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { BaseDeLeads, Etiqueta, LeadHistoricoEstagio, Vendedor } from '@/types/database';
+import type { BaseDeLeads, Etiqueta, LeadHistoricoEstagio, LeadLog, Vendedor } from '@/types/database';
+import { normalizarTexto } from '@/lib/crm-automotivo';
 import { Avatar } from '@/components/Avatar';
 import { isDentroExpediente } from '@/lib/expediente';
 
@@ -61,6 +62,7 @@ export function LeadDrawer({
   const [etiquetasDoLead, setEtiquetasDoLead] = useState<Set<number>>(new Set());
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [historico, setHistorico] = useState<LeadHistoricoEstagio[]>([]);
+  const [logs, setLogs] = useState<LeadLog[]>([]);
 
   const [observacao, setObservacao] = useState(lead.observacao_vendedor ?? '');
   const [salvandoObservacao, setSalvandoObservacao] = useState(false);
@@ -101,7 +103,7 @@ export function LeadDrawer({
     let isMounted = true;
     async function fetchDados() {
       const supabase = createClient();
-      const [{ data: todasEtiquetas }, { data: doLead }, { data: vendedoresData }, { data: historicoData }] =
+      const [{ data: todasEtiquetas }, { data: doLead }, { data: vendedoresData }, { data: historicoData }, { data: logsData }] =
         await Promise.all([
           supabase.from('etiquetas').select('id, nome, cor, created_at').order('nome'),
           supabase.from('lead_etiquetas').select('id_etiqueta').eq('id_lead', lead.id),
@@ -111,12 +113,16 @@ export function LeadDrawer({
             .select('id, id_lead, estagio_anterior, estagio_novo, usuario, created_at')
             .eq('id_lead', lead.id)
             .order('created_at', { ascending: false }),
+          supabase.from('lead_logs')
+            .select('id, id_lead, acao, responsavel_id, responsavel_nome, detalhes, created_at')
+            .eq('id_lead', lead.id).order('created_at', { ascending: false }).limit(50),
         ]);
       if (!isMounted) return;
       setEtiquetas((todasEtiquetas as Etiqueta[]) ?? []);
       setEtiquetasDoLead(new Set(((doLead as { id_etiqueta: number }[]) ?? []).map((e) => e.id_etiqueta)));
       setVendedores((vendedoresData as Vendedor[]) ?? []);
       setHistorico((historicoData as LeadHistoricoEstagio[]) ?? []);
+      setLogs((logsData as LeadLog[]) ?? []);
     }
     fetchDados();
     return () => {
@@ -193,12 +199,13 @@ export function LeadDrawer({
         .update({ observacao_vendedor: observacao })
         .eq('id', lead.id)
         .eq('id_empresa', 1)
-        .select('id, observacao_vendedor')
+        // Mantém id/observação e inclui metadados persistidos de autoria.
+        .select('id, observacao_vendedor, observacao_autor_id, observacao_autor_nome, observacao_atualizada_em')
         .maybeSingle();
       if (error || !data || data.id !== lead.id || data.observacao_vendedor !== observacao) {
         throw new Error('Observação não confirmada');
       }
-      onUpdated({ ...lead, observacao_vendedor: data.observacao_vendedor });
+      onUpdated({ ...lead, ...data });
       setMensagemObservacao('Observação salva com sucesso');
     } catch {
       setMensagemObservacao('Erro ao salvar observação');
@@ -263,7 +270,8 @@ export function LeadDrawer({
 
     const valorNumerico = campos.valor ? Number(campos.valor.replace(',', '.')) : 0;
 
-    const { error } = await supabase
+    const vendedorAnterior = lead.vendedor;
+    const { data, error } = await supabase
       .from('BASE_DE_LEADS')
       .update({
         nome_lead: campos.nome_lead.trim(),
@@ -273,11 +281,13 @@ export function LeadDrawer({
         valor: valorNumerico,
         vendedor: campos.vendedor || null,
       })
-      .eq('id', lead.id);
+      .eq('id', lead.id)
+      .select('id, nome_lead, cpf, data_nascimento, veiculo_interesse, valor, vendedor')
+      .maybeSingle();
 
     setSalvandoCampos(false);
 
-    if (error) {
+    if (error || !data || data.id !== lead.id) {
       setMensagemCampos('Erro ao salvar alterações.');
       return;
     }
@@ -285,13 +295,21 @@ export function LeadDrawer({
     setMensagemCampos('Alterações salvas.');
     onUpdated({
       ...lead,
-      nome_lead: campos.nome_lead.trim(),
-      cpf: campos.cpf || null,
-      data_nascimento: campos.data_nascimento || null,
-      veiculo_interesse: campos.veiculo_interesse || null,
-      valor: valorNumerico,
-      vendedor: campos.vendedor || null,
+      ...data,
     });
+    if (normalizarTexto(vendedorAnterior) !== normalizarTexto(data.vendedor)) {
+      try {
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.frequency.value = 740;
+        gain.gain.setValueAtTime(0.08, context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.16);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.16);
+      } catch { /* feedback auxiliar */ }
+    }
     setTimeout(() => setMensagemCampos(null), 3000);
   }
 
@@ -301,6 +319,7 @@ export function LeadDrawer({
   const whatsappUrl = telefoneParaWhatsapp(lead.telefone);
   const botAtivo = lead.bot_ativo;
   const ultimaAlteracaoBot = formatarUltimaAlteracaoBot(lead.bot_ativo_alterado_em);
+  const ultimoLogObservacao = logs.find((item) => item.acao.startsWith('observacao_'));
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -532,6 +551,13 @@ export function LeadDrawer({
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
               Observações
             </h3>
+            {ultimoLogObservacao && (
+              <p className="mb-2 text-xs text-gray-500">
+                {ultimoLogObservacao.acao === 'observacao_adicionada' ? 'Adicionada' : 'Alterada'} por{' '}
+                {ultimoLogObservacao.responsavel_nome || 'Usuário desconhecido'} em{' '}
+                {new Date(ultimoLogObservacao.created_at).toLocaleString('pt-BR')}
+              </p>
+            )}
             <textarea
               value={observacao}
               onChange={(e) => setObservacao(e.target.value)}
@@ -561,7 +587,7 @@ export function LeadDrawer({
             {historico.length === 0 ? (
               <p className="text-xs text-gray-400">Nenhuma movimentação registrada ainda.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="max-h-72 overflow-y-auto pr-1 space-y-2">
                 {historico.map((item) => (
                   <li key={item.id} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
                     <div className="flex items-center justify-between">
@@ -578,6 +604,27 @@ export function LeadDrawer({
                 ))}
               </ul>
             )}
+          </section>
+
+          <section>
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Logs Gerais</h3>
+            <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+              {logs.map((item) => (
+                <div key={item.id} className="rounded-lg border border-gray-100 p-3">
+                  <div className="flex justify-between gap-2">
+                    <p className="text-sm font-medium">{item.acao.replaceAll('_', ' ')}</p>
+                    <time className="text-xs text-gray-400">{new Date(item.created_at).toLocaleString('pt-BR')}</time>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">{item.responsavel_nome || 'Sistema'}</p>
+                  {Array.isArray(item.detalhes.campos_alterados) && item.detalhes.campos_alterados.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      Campos: {item.detalhes.campos_alterados.join(', ')}
+                    </p>
+                  )}
+                </div>
+              ))}
+              {logs.length === 0 && <p className="text-sm text-gray-400">Nenhum log registrado.</p>}
+            </div>
           </section>
 
           <section className="border-t border-gray-200 pt-5">

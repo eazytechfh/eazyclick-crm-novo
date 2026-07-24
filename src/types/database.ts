@@ -30,6 +30,9 @@ export interface BaseDeLeads {
   updated_at: string | null;
   valor: number | null;
   observacao_vendedor: string | null;
+  observacao_autor_id: string | null;
+  observacao_autor_nome: string | null;
+  observacao_atualizada_em: string | null;
   bot_ativo: boolean;
   bot_ativo_alterado_em: string | null;
   /** Coluna real: "Etapa" */
@@ -84,6 +87,16 @@ export interface LeadHistoricoEstagio {
   estagio_anterior: string | null;
   estagio_novo: string;
   usuario: string | null;
+  created_at: string;
+}
+
+export interface LeadLog {
+  id: number;
+  id_lead: number;
+  acao: string;
+  responsavel_id: string | null;
+  responsavel_nome: string;
+  detalhes: Record<string, unknown>;
   created_at: string;
 }
 
