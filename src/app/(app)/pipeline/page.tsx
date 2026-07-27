@@ -32,9 +32,25 @@ const TICK_MS = 1_000;
 // estágio aqui sem confirmar antes que o valor existe na constraint real — caso contrário o
 // drag-and-drop vai falhar com erro 23514 ao tentar salvar.
 type Coluna = { id: string; label: string; color: string; configurada: boolean };
+type VeiculoVenda = {
+  id: number;
+  marca: string | null;
+  modelo: string | null;
+  ano: number | null;
+  placa: string | null;
+  status: string | null;
+};
 
 function normalizeEstagio(estagio: string | null | undefined) {
   return (estagio ?? '').toLowerCase().trim();
+}
+
+function textoVeiculo(veiculo: VeiculoVenda) {
+  return [veiculo.marca, veiculo.modelo, veiculo.ano, veiculo.placa].filter(Boolean).join(' · ');
+}
+
+function normalizarBusca(texto: string) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 }
 
 // Timer de negociação exibido no próprio card do Pipeline: quando o lead já tem a etiqueta
@@ -215,11 +231,38 @@ export default function PipelinePage() {
   const [dadosFechamento, setDadosFechamento] = useState({ nome: '', valor: '' });
   const [salvandoFechamento, setSalvandoFechamento] = useState(false);
   const [errosFechamento, setErrosFechamento] = useState<string[]>([]);
+  const [veiculosVenda, setVeiculosVenda] = useState<VeiculoVenda[]>([]);
+  const [veiculoId, setVeiculoId] = useState('');
+  const [buscaVeiculo, setBuscaVeiculo] = useState('');
+  const [listaVeiculosAberta, setListaVeiculosAberta] = useState(false);
+  const [carregandoVeiculos, setCarregandoVeiculos] = useState(false);
   const [celebracao, setCelebracao] = useState<string | null>(null);
   const fecharCelebracao = useCallback(() => setCelebracao(null), []);
   const { etapas, erroEtapas } = usePipelineEtapas();
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
+  const filteredVehicles = useMemo(() => {
+    const termo = normalizarBusca(buscaVeiculo.trim());
+    if (!termo) return veiculosVenda;
+    return veiculosVenda.filter((veiculo) => normalizarBusca(textoVeiculo(veiculo)).includes(termo));
+  }, [buscaVeiculo, veiculosVenda]);
+
+  useEffect(() => {
+    if (!fechamentoPendente) return;
+    let ativo = true;
+    setCarregandoVeiculos(true);
+    const supabase = createClient();
+    void supabase.from('ESTOQUE').select('id, marca, modelo, ano, placa, status').order('marca')
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        const disponiveis = error ? [] : ((data ?? []) as VeiculoVenda[]).filter(
+          (veiculo) => normalizarBusca(veiculo.status ?? '') === 'disponivel'
+        );
+        setVeiculosVenda(disponiveis);
+        setCarregandoVeiculos(false);
+      });
+    return () => { ativo = false; };
+  }, [fechamentoPendente]);
 
   const colunas = useMemo<Coluna[]>(() => {
     const configuradas = etapas.map((etapa) => ({
@@ -341,6 +384,9 @@ export default function PipelinePage() {
       setFechamentoPendente(leadAtual);
       setDadosFechamento({ nome: leadAtual.nome_lead ?? '', valor: leadAtual.valor ? String(leadAtual.valor) : '' });
       setErrosFechamento(validacao.erros);
+      setVeiculoId('');
+      setBuscaVeiculo('');
+      setListaVeiculosAberta(false);
       return;
     }
 
@@ -444,12 +490,17 @@ export default function PipelinePage() {
   async function confirmarFechamento() {
     if (!fechamentoPendente || salvandoFechamento) return;
     const validacao = validarFechamento(dadosFechamento.nome, dadosFechamento.valor);
-    setErrosFechamento(validacao.erros);
-    if (!validacao.valido) return;
+    const erros = [...validacao.erros];
+    if (!veiculoId) erros.push('Selecione o veículo vendido.');
+    setErrosFechamento(erros);
+    if (!validacao.valido || !veiculoId) return;
     setSalvandoFechamento(true);
     const supabase = createClient();
-    const { data, error } = await supabase.rpc('fechar_venda', {
-      p_id_lead: fechamentoPendente.id, p_nome: validacao.nome, p_valor: validacao.valor,
+    const { data, error } = await supabase.rpc('fechar_venda_com_veiculo', {
+      p_id_lead: fechamentoPendente.id,
+      p_nome: validacao.nome,
+      p_valor: validacao.valor,
+      p_estoque_id: veiculoId,
     });
     setSalvandoFechamento(false);
     const confirmado = (Array.isArray(data) ? data[0] : data) as BaseDeLeads | null;
@@ -542,6 +593,66 @@ export default function PipelinePage() {
                 onChange={(e) => setDadosFechamento((d) => ({ ...d, valor: e.target.value }))}
                 className="mt-1 w-full rounded-lg border px-3 py-2" />
             </label>
+            <label className="mt-3 block text-sm">Veículo vendido</label>
+            <div className="relative mt-1">
+              <input
+                role="combobox"
+                aria-expanded={listaVeiculosAberta}
+                aria-controls="veiculos-venda-lista"
+                autoComplete="off"
+                value={buscaVeiculo}
+                placeholder="Digite marca, modelo, ano ou placa"
+                disabled={carregandoVeiculos}
+                onFocus={() => setListaVeiculosAberta(true)}
+                onChange={(e) => {
+                  setBuscaVeiculo(e.target.value);
+                  setVeiculoId('');
+                  setListaVeiculosAberta(true);
+                }}
+                className="w-full rounded-lg border px-3 py-2 pr-9"
+              />
+              <button
+                type="button"
+                aria-label="Abrir lista de veículos"
+                disabled={carregandoVeiculos}
+                onClick={() => setListaVeiculosAberta((aberta) => !aberta)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-gray-500"
+              >
+                ⌄
+              </button>
+              {listaVeiculosAberta && !carregandoVeiculos && (
+                <div
+                  id="veiculos-venda-lista"
+                  role="listbox"
+                  className="absolute left-0 top-full z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xl"
+                >
+                  {filteredVehicles.length > 0 ? filteredVehicles.map((veiculo) => (
+                    <button
+                      key={veiculo.id}
+                      type="button"
+                      role="option"
+                      aria-selected={veiculoId === String(veiculo.id)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setVeiculoId(String(veiculo.id));
+                        setBuscaVeiculo(textoVeiculo(veiculo));
+                        setListaVeiculosAberta(false);
+                      }}
+                      className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                        veiculoId === String(veiculo.id) ? 'bg-primary/10 font-medium text-primary' : 'text-gray-800'
+                      }`}
+                    >
+                      {textoVeiculo(veiculo)}
+                    </button>
+                  )) : (
+                    <p className="px-3 py-3 text-sm text-gray-500">Nenhum veículo encontrado.</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {!carregandoVeiculos && veiculosVenda.length === 0 && (
+              <p className="mt-2 text-xs text-red-600">Nenhum veículo disponível no estoque.</p>
+            )}
             {errosFechamento.length > 0 && <ul role="alert" className="mt-3 text-sm text-red-600">{errosFechamento.map((e) => <li key={e}>{e}</li>)}</ul>}
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" disabled={salvandoFechamento} onClick={() => setFechamentoPendente(null)} className="rounded-lg border px-4 py-2">Cancelar</button>

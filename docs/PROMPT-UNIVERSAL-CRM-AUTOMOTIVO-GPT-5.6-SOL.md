@@ -12,7 +12,7 @@ Projeto/tenant: `[NOME DO CRM OU EMPRESA]`
 
 Stack esperada: descubra no repositório; não presuma nomes de tabelas, colunas, estágios, roles ou ferramentas de teste.
 
-Assets de referência que o usuário deve anexar à sessão:
+Primeiro procure e reutilize os assets existentes em `public/effects`. Somente se estiverem ausentes ou corrompidos, peça ao usuário estes assets:
 
 - imagem lateral do carro de referência: `[CAMINHO/ANEXO DA IMAGEM]`;
 - áudio de carro acelerando: `[CAMINHO/ANEXO DO MP3 DO MOTOR]`;
@@ -38,7 +38,7 @@ Considere transferência como mudança real do responsável/vendedor do lead.
 - Acompanhe `postgres_changes` de `BASE_DE_LEADS` e, após o evento, confirme no banco os IDs cujo campo `vendedor` corresponde exatamente ao nome do usuário autenticado.
 - Toque `lead-assigned.mp3` uma única vez quando surgir ao menos um ID que não existia no conjunto anterior.
 - Substitua o conjunto anterior pelo conjunto atual em toda verificação, permitindo detectar corretamente uma reatribuição futura.
-- Use polling leve de aproximadamente 15 segundos como fallback para automações ou ambientes onde a tabela não está habilitada na publication do Supabase Realtime.
+- Use polling leve de aproximadamente 180 segundos como fallback para automações ou ambientes onde a tabela não está habilitada na publication do Supabase Realtime.
 - Remova channel e intervalo no cleanup do componente.
 - Não toque em atualizações comuns de um lead que já pertence ao vendedor.
 - O watcher deve retornar `null` e não criar popup visual adicional.
@@ -111,6 +111,21 @@ Comportamento:
 - atualize lista/modal apenas após confirmação, ou faça rollback completo em erro;
 - normalize para comparação valores legados com caixa/acento diferentes (`Disponível`, `INDISPONIVEL`), sem enviar valores incompatíveis com uma constraint existente;
 - confirme se o status é texto, enum ou FK antes de escrever migration/query.
+
+### 6.1. Veículo obrigatório na venda fechada
+
+Toda entrada no estágio real `fechado` deve abrir o modal, mesmo quando nome e valor já estiverem preenchidos.
+
+- Consulte a tabela real de estoque e liste somente veículos cujo status normalizado seja `disponivel`.
+- Exija a escolha de um veículo existente; texto digitado sem selecionar um resultado não é válido.
+- Use um combobox pesquisável por marca, modelo, ano ou placa.
+- A lista deve abrir abaixo do campo (`top-full`), ter altura máxima (`max-h-60`) e scroll próprio.
+- Não use o `<select>` nativo para listas extensas.
+- Persista no lead o identificador do veículo em `estoque_veiculo_id`.
+- Faça o fechamento e a alteração do estoque para `vendido` numa única RPC/transação.
+- Na RPC, bloqueie o lead e o veículo com `FOR UPDATE`, valide novamente o status e autorize vendedor responsável ou gestor.
+- Se qualquer validação ou update falhar, toda a operação deve ser revertida e a celebração não pode aparecer.
+- Crie uma migration nova; nunca edite uma migration que já possa ter sido aplicada.
 
 ### 7. Celebração visual e sonora da venda fechada
 
@@ -189,6 +204,11 @@ Pré-carregue os dois arquivos, espere `loadedmetadata` antes de definir `curren
 - Aceitar valor `0`, negativo, `NaN`, vazio convertido para zero ou nome só com espaços.
 - Validar fechamento apenas no client.
 - Fazer dois updates separados (dados e estágio) e deixar estado parcial se o segundo falhar.
+- Atualizar o lead e depois o estoque em chamadas separadas, deixando venda fechada sem veículo vendido.
+- Usar um seletor nativo enorme que abre sobre a tela, em vez do combobox pesquisável com lista abaixo.
+- Aceitar somente o texto digitado sem vincular o ID real do veículo.
+- Listar veículos indisponíveis ou vendidos no modal de fechamento.
+- Não bloquear o veículo no banco e permitir duas vendas concorrentes do mesmo estoque.
 - Inventar o valor do estágio (`venda_fechada`, `ganho`) sem conferir a constraint real.
 - Iniciar o filtro do estoque em “Todos” e expor vendidos na listagem normal.
 - Comparar status sem normalizar acentos/caixa ou persistir label de UI no lugar do valor canônico.
@@ -227,6 +247,8 @@ Pré-carregue os dois arquivos, espere `loadedmetadata` antes de definir `curren
 - Loading de carro aparece nas telas principais e é acessível.
 - Nenhum caminho consegue persistir estágio fechado com nome vazio ou valor menor/igual a zero.
 - Modal permite corrigir dados e conclui a movimentação sem estado intermediário incorreto.
+- Modal exige um veículo disponível, permite pesquisar por marca/modelo/ano/placa e abre a lista para baixo com scroll.
+- Venda confirmada grava `estoque_veiculo_id` e muda o status do veículo para `vendido` na mesma transação.
 - Estoque abre mostrando somente disponíveis e permite consultar/alterar os três status.
 - Erros de banco ficam visíveis e a UI continua consistente.
 - Migrations são reaplicáveis, RLS permanece segura, testes/type-check/build passam.

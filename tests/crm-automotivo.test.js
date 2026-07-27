@@ -20,6 +20,41 @@ test('migration protege fechamento, auditoria e estoque', () => {
   assert.match(sql, /check \(status in \('disponivel', 'indisponivel', 'vendido'\)\)/);
 });
 
+test('fechamento exige veículo disponível em seletor pesquisável abaixo do campo', () => {
+  const source = read('src/app/(app)/pipeline/page.tsx');
+  assert.match(source, /\.from\('ESTOQUE'\)/);
+  assert.match(source, /placeholder="Digite marca, modelo, ano ou placa"/);
+  assert.match(source, /filteredVehicles/);
+  assert.match(source, /top-full/);
+  assert.match(source, /max-h-60/);
+  assert.doesNotMatch(source, /<select[^>]+value=\{veiculoId\}/);
+  assert.match(source, /\.rpc\('fechar_venda_com_veiculo'/);
+});
+
+test('migration 0018 fecha venda e vende veículo na mesma transação', () => {
+  const sql = read('supabase/migrations/0018_venda_vinculada_estoque.sql').toLowerCase();
+  assert.match(sql, /estoque_veiculo_id/);
+  assert.match(sql, /fechar_venda_com_veiculo/);
+  assert.match(sql, /from public\."estoque"[\s\S]*for update/);
+  assert.match(sql, /set status = 'vendido'/);
+  assert.match(sql, /update public\."base_de_leads"/);
+  assert.match(sql, /coalesce\(public\.get_my_cargo\(\), ''\) not in/);
+  assert.match(sql, /grant execute[\s\S]*to authenticated/);
+});
+
+test('sql universal preserva o template e consolida o schema real até a 0018', () => {
+  const sql = read('docs/sql/TEMPLATE-BASE-CRM-AUTOMOTIVO-UNIVERSAL.sql');
+  assert.match(sql, /TEMPLATE BASE - CONCESSIONÁRIA IA/);
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS public\."ESTOQUE"/);
+  assert.match(sql, /-- ===== 0012_pipeline_etapas_configuraveis\.sql =====/);
+  assert.match(sql, /-- ===== 0018_venda_vinculada_estoque\.sql =====/);
+  assert.match(sql, /fechar_venda_com_veiculo/);
+  assert.match(sql, /estoque_veiculo_id/);
+  assert.match(sql, /supabase_realtime/);
+  assert.match(sql, /public\."HISTORICO_CHAT"/);
+  assert.doesNotMatch(sql, /ales\s*car|alescar1|crm\s+ales/i);
+});
+
 test('watcher global cria baseline, polling e cleanup sem UI', () => {
   const source = read('src/components/LeadAssignedWatcher.tsx');
   assert.match(source, /INTERVALO_FALLBACK_MS = 180_000/);
@@ -61,7 +96,7 @@ test('pipeline bloqueia fechamento inválido e celebra somente após confirmaç�
   assert.match(source, /validarFechamento/);
   assert.match(source, /fechamentoPendente/);
   assert.match(source, /SaleCelebration/);
-  assert.match(source, /\.rpc\('fechar_venda'/);
+  assert.match(source, /\.rpc\('fechar_venda_com_veiculo'/);
   assert.match(source, /useCallback/);
   assert.match(source, /fecharCelebracao/);
   assert.match(source, /lead-assignments-changed/);
