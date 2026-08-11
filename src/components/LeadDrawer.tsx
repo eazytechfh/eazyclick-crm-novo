@@ -69,6 +69,8 @@ export function LeadDrawer({
   const [mensagemObservacao, setMensagemObservacao] = useState<string | null>(null);
   const [alterandoBot, setAlterandoBot] = useState(false);
   const [mensagemBot, setMensagemBot] = useState<string | null>(null);
+  const [gerandoResumo, setGerandoResumo] = useState(false);
+  const [mensagemResumo, setMensagemResumo] = useState<string | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
@@ -260,6 +262,28 @@ export function LeadDrawer({
     } finally {
       excluindoRef.current = false;
       setExcluindo(false);
+    }
+  }
+
+  async function gerarResumoQualificacao() {
+    if (gerandoResumo || !lead.telefone?.trim()) return;
+    setGerandoResumo(true);
+    setMensagemResumo(null);
+
+    try {
+      const response = await fetch(`/api/leads/${lead.id}/resumo-qualificacao`, {
+        method: 'POST',
+      });
+      const resultado = await response.json().catch(() => null);
+      const respostaConfirmada =
+        response.ok && resultado?.ok === true && resultado?.leadId === lead.id;
+      if (!respostaConfirmada) throw new Error('Solicitação não confirmada');
+
+      setMensagemResumo('Resumo solicitado. Ele será atualizado em instantes.');
+    } catch {
+      setMensagemResumo('Não foi possível solicitar o resumo. Tente novamente.');
+    } finally {
+      setGerandoResumo(false);
     }
   }
 
@@ -537,14 +561,37 @@ export function LeadDrawer({
           </section>
 
           <section>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Resumo de qualificação [IA]
-            </h3>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Resumo de qualificação [IA]
+              </h3>
+              <button
+                type="button"
+                onClick={gerarResumoQualificacao}
+                disabled={gerandoResumo || !lead.telefone?.trim()}
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {gerandoResumo ? 'Gerando...' : 'Criar resumo com IA'}
+              </button>
+            </div>
             <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm leading-relaxed text-gray-700">
               {lead.resumo_qualificacao?.trim() || (
                 <span className="text-gray-400">Nenhum resumo de qualificação disponível ainda.</span>
               )}
             </div>
+            {!lead.telefone?.trim() && (
+              <p className="mt-2 text-xs text-amber-700">Cadastre um telefone para gerar o resumo.</p>
+            )}
+            {mensagemResumo && (
+              <p
+                role="status"
+                className={`mt-2 text-xs ${
+                  mensagemResumo.startsWith('Não') ? 'text-red-600' : 'text-green-700'
+                }`}
+              >
+                {mensagemResumo}
+              </p>
+            )}
           </section>
 
           <section>
