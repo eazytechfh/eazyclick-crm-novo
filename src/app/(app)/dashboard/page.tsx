@@ -34,9 +34,7 @@ import {
 
 type Periodo = Exclude<LeadPeriodo, 'todos'>;
 
-type DashboardPeriodo = Exclude<Periodo, 'todos'>;
-
-const PERIODO_OPTIONS: PillOption<DashboardPeriodo>[] = [
+const PERIODO_OPTIONS: PillOption<Periodo>[] = [
   { value: 'hoje', label: 'Hoje' },
   { value: 'ontem', label: 'Ontem' },
   { value: '7d', label: '7 dias' },

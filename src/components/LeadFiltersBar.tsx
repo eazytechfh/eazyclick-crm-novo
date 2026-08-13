@@ -8,7 +8,6 @@ import {
   PERIODO_OPTIONS,
   type LeadFiltersState,
 } from '@/hooks/useLeadFilters';
-import { CustomDateRangePicker } from '@/components/CustomDateRangePicker';
 
 interface LeadFiltersBarProps {
   filters: LeadFiltersState;
