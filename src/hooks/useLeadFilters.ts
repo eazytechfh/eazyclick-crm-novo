@@ -3,8 +3,14 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads, Etiqueta } from '@/types/database';
 import { isDentroExpediente } from '@/lib/expediente';
 import type { PillOption } from '@/components/PillFilter';
-import { getCustomDateBoundaries, getDefaultCustomDateRange, type Periodo } from '@/lib/lead-period-filter';
+import {
+  getDefaultCustomDateRange,
+  isLeadWithinPeriod,
+  type CustomDateRange,
+  type Periodo,
+} from '@/lib/lead-period-filter';
 
+export type { Periodo } from '@/lib/lead-period-filter';
 export type Expediente = 'todos' | 'dentro' | 'fora';
 
 export const PERIODO_OPTIONS: PillOption<Periodo>[] = [
@@ -23,13 +29,6 @@ export const EXPEDIENTE_OPTIONS: PillOption<Expediente>[] = [
   { value: 'fora', label: 'Fora do expediente' },
 ];
 
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 export function useLeadFilters(leads: BaseDeLeads[]) {
   const [busca, setBusca] = useState('');
   const [origemFiltro, setOrigemFiltro] = useState('todas');
@@ -37,8 +36,9 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
   const [veiculoFiltro, setVeiculoFiltro] = useState('todos');
   const [etiquetaFiltro, setEtiquetaFiltro] = useState('todas');
   const [periodo, setPeriodo] = useState<Periodo>('todos');
-  const [customStart, setCustomStart] = useState(() => getDefaultCustomDateRange().start);
-  const [customEnd, setCustomEnd] = useState(() => getDefaultCustomDateRange().end);
+  const [customDateRange, setCustomDateRange] = useState<CustomDateRange>(() =>
+    getDefaultCustomDateRange()
+  );
   const [expediente, setExpediente] = useState<Expediente>('todos');
   const [etiquetasDisponiveis, setEtiquetasDisponiveis] = useState<Etiqueta[]>([]);
   const [etiquetasPorLead, setEtiquetasPorLead] = useState<Map<number, Set<number>>>(new Map());
@@ -137,6 +137,7 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
   );
 
   const leadsFiltrados = useMemo(() => {
+    const now = new Date();
     return leads.filter((lead) => {
       if (busca) {
         const term = busca.toLowerCase();
@@ -156,30 +157,7 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
         if (!etiquetasPorLead.get(lead.id)?.has(idEtiqueta)) return false;
       }
 
-      if (periodo !== 'todos') {
-        const created = new Date(lead.created_at);
-        if (Number.isNaN(created.getTime())) return false;
-        if (periodo === 'personalizado') {
-          const range = getCustomDateBoundaries({ start: customStart, end: customEnd });
-          if (!range || created < range.start || created > range.end) return false;
-        } else {
-        const limites: Record<Exclude<Periodo, 'personalizado' | 'todos'>, Date> = {
-          hoje: daysAgo(0),
-          ontem: daysAgo(1),
-          '7d': daysAgo(7),
-          '30d': daysAgo(30),
-          '90d': daysAgo(90),
-        };
-
-        if (periodo === 'ontem') {
-          const inicioOntem = daysAgo(1);
-          const fimOntem = daysAgo(0);
-          if (!(created >= inicioOntem && created < fimOntem)) return false;
-        } else if (created < limites[periodo]) {
-          return false;
-        }
-        }
-      }
+      if (!isLeadWithinPeriod(lead.created_at, periodo, now, customDateRange)) return false;
 
       if (expediente !== 'todos') {
         const dentro = isDentroExpediente(new Date(lead.created_at));
@@ -198,8 +176,7 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     etiquetaFiltro,
     etiquetasPorLead,
     periodo,
-    customStart,
-    customEnd,
+    customDateRange,
     expediente,
   ]);
 
@@ -210,9 +187,7 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     setVeiculoFiltro('todos');
     setEtiquetaFiltro('todas');
     setPeriodo('todos');
-    const customRange = getDefaultCustomDateRange();
-    setCustomStart(customRange.start);
-    setCustomEnd(customRange.end);
+    setCustomDateRange(getDefaultCustomDateRange());
     setExpediente('todos');
   }
 
@@ -229,10 +204,12 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     setEtiquetaFiltro,
     periodo,
     setPeriodo,
-    customStart,
-    customEnd,
-    setCustomStart,
-    setCustomEnd,
+    customStart: customDateRange.start,
+    customEnd: customDateRange.end,
+    setCustomStart: (start: string) =>
+      setCustomDateRange((current) => ({ ...current, start })),
+    setCustomEnd: (end: string) =>
+      setCustomDateRange((current) => ({ ...current, end })),
     expediente,
     setExpediente,
     origensDisponiveis,

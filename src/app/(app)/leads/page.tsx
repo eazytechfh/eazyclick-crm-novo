@@ -7,16 +7,14 @@ import { ptBR } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
-import { StatusBadge, ESTAGIO_CONFIG } from '@/components/StatusBadge';
+import { StatusBadge } from '@/components/StatusBadge';
 import { LeadFiltersBar } from '@/components/LeadFiltersBar';
 import { NovoLeadModal } from '@/components/NovoLeadModal';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
-
-function getEstagioConfig(estagio: string) {
-  const key = estagio.toLowerCase().trim();
-  return ESTAGIO_CONFIG[key] ?? { label: 'Oportunidade', color: '#22c55e' };
-}
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { etapaDe } from '@/lib/pipeline-etapas';
+import { AutomotiveLoading } from '@/components/AutomotiveLoading';
 
 const ORIGEM_DOT_COLORS: Record<string, string> = {
   whatsapp: '#22c55e',
@@ -36,6 +34,7 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [modalNovoLeadAberto, setModalNovoLeadAberto] = useState(false);
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
+  const { etapas } = usePipelineEtapas();
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
 
@@ -48,7 +47,7 @@ export default function LeadsPage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, bot_ativo_alterado_em, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa'
         )
         .order('created_at', { ascending: false });
 
@@ -63,9 +62,12 @@ export default function LeadsPage() {
       setLoading(false);
     }
 
+    const atualizarAtribuicoes = () => void fetchLeads();
     fetchLeads();
+    window.addEventListener('lead-assignments-changed', atualizarAtribuicoes);
     return () => {
       isMounted = false;
+      window.removeEventListener('lead-assignments-changed', atualizarAtribuicoes);
     };
   }, []);
 
@@ -148,7 +150,7 @@ export default function LeadsPage() {
         </div>
 
         {loading ? (
-          <p className="px-4 py-6 text-sm text-gray-500">Carregando...</p>
+          <AutomotiveLoading label="Carregando leads" />
         ) : leadsFiltrados.length === 0 ? (
           <p className="px-4 py-6 text-sm text-gray-500">Nenhum lead encontrado.</p>
         ) : (
@@ -182,7 +184,7 @@ export default function LeadsPage() {
                     </div>
                     <span className="truncate text-sm text-gray-700">{lead.vendedor ?? '—'}</span>
                     <span className="truncate text-sm text-gray-700">{lead.veiculo_interesse ?? '—'}</span>
-                    <StatusBadge estagio={lead.estagio_lead} />
+                    <StatusBadge estagio={lead.estagio_lead} etapas={etapas} />
                     <span className="text-sm font-medium text-foreground">
                       {lead.valor != null ? currencyFormatter.format(lead.valor) : '—'}
                     </span>
@@ -207,13 +209,17 @@ export default function LeadsPage() {
       {leadSelecionado && (
         <LeadDrawer
           lead={leadSelecionado}
-          estagioLabel={getEstagioConfig(leadSelecionado.estagio_lead).label}
-          estagioColor={getEstagioConfig(leadSelecionado.estagio_lead).color}
-          estagioLabelOf={(estagio) => getEstagioConfig(estagio).label}
+          estagioLabel={etapaDe(leadSelecionado.estagio_lead, etapas).nome}
+          estagioColor={etapaDe(leadSelecionado.estagio_lead, etapas).cor}
+          estagioLabelOf={(estagio) => etapaDe(estagio, etapas).nome}
           onClose={() => setLeadSelecionado(null)}
           onUpdated={(atualizado) => {
             setLeadSelecionado(atualizado);
             setLeads((prev) => prev.map((l) => (l.id === atualizado.id ? atualizado : l)));
+          }}
+          onDeleted={(leadId) => {
+            setLeads((leadsAtuais) => leadsAtuais.filter((item) => item.id !== leadId));
+            setLeadSelecionado(null);
           }}
         />
       )}

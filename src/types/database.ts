@@ -30,7 +30,11 @@ export interface BaseDeLeads {
   updated_at: string | null;
   valor: number | null;
   observacao_vendedor: string | null;
-  bot_ativo: string | null;
+  observacao_autor_id: string | null;
+  observacao_autor_nome: string | null;
+  observacao_atualizada_em: string | null;
+  bot_ativo: boolean;
+  bot_ativo_alterado_em: string | null;
   /** Coluna real: "Etapa" */
   Etapa: string | null;
   /** Coluna real: "QuemEnviouMsg" */
@@ -51,6 +55,8 @@ export interface BaseDeLeads {
   cpf: string | null;
   data_nascimento: string | null;
   score_serasa: number | null;
+  /** IDs de etiquetas atribuídas ao lead; coluna sincronizada com public.lead_etiquetas. */
+  etiquetas: number[];
   follow_manual: 'ativo' | 'inativo' | string | null;
   /** Prazo do cronômetro de 30min de "Em Negociação"; null quando o lead não está nesse estágio. */
   negociacao_expira_em: string | null;
@@ -81,6 +87,16 @@ export interface LeadHistoricoEstagio {
   estagio_anterior: string | null;
   estagio_novo: string;
   usuario: string | null;
+  created_at: string;
+}
+
+export interface LeadLog {
+  id: number;
+  id_lead: number;
+  acao: string;
+  responsavel_id: string | null;
+  responsavel_nome: string;
+  detalhes: Record<string, unknown>;
   created_at: string;
 }
 
@@ -184,4 +200,15 @@ export interface Etiqueta {
   nome: string;
   cor: string;
   created_at: string;
+}
+
+export interface PipelineEtapa {
+  id: number;
+  slug: string;
+  nome: string;
+  cor: string;
+  ordem: number;
+  is_inicial: boolean;
+  created_at: string;
+  updated_at: string;
 }

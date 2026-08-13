@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { PillFilter } from '@/components/PillFilter';
+import { CustomDateRangePicker } from '@/components/CustomDateRangePicker';
 import {
   EXPEDIENTE_OPTIONS,
   PERIODO_OPTIONS,

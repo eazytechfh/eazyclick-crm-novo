@@ -1,4 +1,6 @@
 import clsx from 'clsx';
+import type { PipelineEtapa } from '@/types/database';
+import { etapaDe } from '@/lib/pipeline-etapas';
 
 export interface StatusConfig {
   label: string;
@@ -26,12 +28,14 @@ const DEFAULT_CONFIG: StatusConfig = { label: 'Desconhecido', color: '#6b7280' }
 
 interface StatusBadgeProps {
   estagio: string | null | undefined;
+  etapas?: PipelineEtapa[];
   className?: string;
 }
 
-export function StatusBadge({ estagio, className }: StatusBadgeProps) {
+export function StatusBadge({ estagio, etapas, className }: StatusBadgeProps) {
+  const etapa = etapas ? etapaDe(estagio, etapas) : null;
   const key = (estagio ?? '').toLowerCase().trim();
-  const config = ESTAGIO_CONFIG[key] ?? DEFAULT_CONFIG;
+  const config = etapa ? { label: etapa.nome, color: etapa.cor } : ESTAGIO_CONFIG[key] ?? DEFAULT_CONFIG;
 
   return (
     <span

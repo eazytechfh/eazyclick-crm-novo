@@ -20,17 +20,19 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads } from '@/types/database';
 import { KpiCard } from '@/components/KpiCard';
 import { PillFilter, type PillOption } from '@/components/PillFilter';
-import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { etapaDe } from '@/lib/pipeline-etapas';
 import { isDentroExpediente } from '@/lib/expediente';
-
 import { CustomDateRangePicker } from '@/components/CustomDateRangePicker';
 import {
   getCustomDateBoundaries,
   getDefaultCustomDateRange,
   getPreviousDateBoundaries,
   type CustomDateRange,
-  type Periodo,
+  type Periodo as LeadPeriodo,
 } from '@/lib/lead-period-filter';
+
+type Periodo = Exclude<LeadPeriodo, 'todos'>;
 
 type DashboardPeriodo = Exclude<Periodo, 'todos'>;
 
@@ -46,8 +48,8 @@ const PERIODO_OPTIONS: PillOption<DashboardPeriodo>[] = [
 // Decisão de horário comercial fixo (não há configuração de expediente no banco hoje):
 
 function getPeriodoRange(
-  periodo: DashboardPeriodo,
-  customRange: CustomDateRange
+  periodo: Periodo,
+  customDateRange: CustomDateRange
 ): { start: Date; end: Date; prevStart: Date; prevEnd: Date } {
   const now = new Date();
 
@@ -88,14 +90,14 @@ function getPeriodoRange(
       return { start, end, prevStart, prevEnd };
     }
     case 'personalizado': {
-      const currentRange = getCustomDateBoundaries(customRange);
-      if (!currentRange) throw new RangeError('Intervalo personalizado inválido.');
-      const previousRange = getPreviousDateBoundaries(currentRange);
+      const current = getCustomDateBoundaries(customDateRange);
+      if (!current) throw new RangeError('Intervalo personalizado inválido.');
+      const previous = getPreviousDateBoundaries(current);
       return {
-        start: currentRange.start,
-        end: currentRange.end,
-        prevStart: previousRange.start,
-        prevEnd: previousRange.end,
+        start: current.start,
+        end: current.end,
+        prevStart: previous.start,
+        prevEnd: previous.end,
       };
     }
   }
@@ -111,10 +113,12 @@ function pctChange(current: number, previous: number): number {
 export default function DashboardPage() {
   const [leads, setLeads] = useState<BaseDeLeads[]>([]);
   const [loading, setLoading] = useState(true);
-  const [periodo, setPeriodo] = useState<DashboardPeriodo>('7d');
-  const [customStart, setCustomStart] = useState(() => getDefaultCustomDateRange().start);
-  const [customEnd, setCustomEnd] = useState(() => getDefaultCustomDateRange().end);
+  const [periodo, setPeriodo] = useState<Periodo>('7d');
+  const [customDateRange, setCustomDateRange] = useState<CustomDateRange>(() =>
+    getDefaultCustomDateRange()
+  );
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const { etapas } = usePipelineEtapas();
 
   useEffect(() => {
     let isMounted = true;
@@ -125,7 +129,7 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora"'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, bot_ativo_alterado_em, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora"'
         )
         .order('created_at', { ascending: false });
 
@@ -151,8 +155,8 @@ export default function DashboardPage() {
   }, []);
 
   const { start, end, prevStart, prevEnd } = useMemo(
-    () => getPeriodoRange(periodo, { start: customStart, end: customEnd }),
-    [customEnd, customStart, periodo]
+    () => getPeriodoRange(periodo, customDateRange),
+    [periodo, customDateRange]
   );
 
   const leadsNoPeriodo = useMemo(
@@ -255,11 +259,11 @@ export default function DashboardPage() {
       .map(([estagio, total]) => ({
         estagio,
         total,
-        label: ESTAGIO_CONFIG[estagio]?.label ?? estagio,
-        color: ESTAGIO_CONFIG[estagio]?.color ?? '#6b7280',
+        label: etapaDe(estagio, etapas).nome,
+        color: etapaDe(estagio, etapas).cor,
       }))
       .sort((a, b) => b.total - a.total);
-  }, [leadsNoPeriodo]);
+  }, [etapas, leadsNoPeriodo]);
 
   const veiculosMaisProcurados = useMemo(() => {
     const map = new Map<string, number>();
@@ -296,10 +300,14 @@ export default function DashboardPage() {
           <PillFilter options={PERIODO_OPTIONS} selected={periodo} onChange={setPeriodo} />
           {periodo === 'personalizado' && (
             <CustomDateRangePicker
-              start={customStart}
-              end={customEnd}
-              onStartChange={setCustomStart}
-              onEndChange={setCustomEnd}
+              start={customDateRange.start}
+              end={customDateRange.end}
+              onStartChange={(start) =>
+                setCustomDateRange((current) => ({ ...current, start }))
+              }
+              onEndChange={(end) =>
+                setCustomDateRange((current) => ({ ...current, end }))
+              }
             />
           )}
         </div>

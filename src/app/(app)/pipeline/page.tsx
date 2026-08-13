@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DndContext,
   PointerSensor,
@@ -16,10 +16,14 @@ import type { BaseDeLeads } from '@/types/database';
 import { Avatar } from '@/components/Avatar';
 import { LeadDrawer } from '@/components/LeadDrawer';
 import { LeadFiltersBar } from '@/components/LeadFiltersBar';
-import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
 import { useLeadFilters } from '@/hooks/useLeadFilters';
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { etapaDe } from '@/lib/pipeline-etapas';
 import { formatContagem } from '@/lib/negociacao/tempo';
 import { statusAtendimentoDoLead, type StatusAtendimento } from '@/lib/negociacao/etiquetasAtendimento';
+import { AutomotiveLoading } from '@/components/AutomotiveLoading';
+import { SaleCelebration } from '@/components/SaleCelebration';
+import { validarFechamento } from '@/lib/crm-automotivo';
 
 const TICK_MS = 1_000;
 
@@ -27,18 +31,26 @@ const TICK_MS = 1_000;
 // exatamente os valores aceitos pela constraint CHECK de estagio_lead no banco. Não adicione um
 // estágio aqui sem confirmar antes que o valor existe na constraint real — caso contrário o
 // drag-and-drop vai falhar com erro 23514 ao tentar salvar.
-const COLUNAS = (Object.keys(ESTAGIO_CONFIG) as Array<keyof typeof ESTAGIO_CONFIG>).map((id) => ({
-  id,
-  label: ESTAGIO_CONFIG[id].label,
-  color: ESTAGIO_CONFIG[id].color,
-}));
+type Coluna = { id: string; label: string; color: string; configurada: boolean };
+type VeiculoVenda = {
+  id: number;
+  marca: string | null;
+  modelo: string | null;
+  ano: number | null;
+  placa: string | null;
+  status: string | null;
+};
 
-type ColunaId = (typeof COLUNAS)[number]['id'];
+function normalizeEstagio(estagio: string | null | undefined) {
+  return (estagio ?? '').toLowerCase().trim();
+}
 
-function normalizeEstagio(estagio: string): ColunaId {
-  const key = estagio.toLowerCase().trim();
-  const found = COLUNAS.find((c) => c.id === key);
-  return found ? found.id : 'oportunidade';
+function textoVeiculo(veiculo: VeiculoVenda) {
+  return [veiculo.marca, veiculo.modelo, veiculo.ano, veiculo.placa].filter(Boolean).join(' · ');
+}
+
+function normalizarBusca(texto: string) {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 }
 
 // Timer de negociação exibido no próprio card do Pipeline: quando o lead já tem a etiqueta
@@ -118,9 +130,10 @@ function LeadCard({ lead, onOpen, agora, statusAtendimento }: CardProps) {
 }
 
 interface ColumnProps {
-  id: ColunaId;
+  id: string;
   label: string;
   color: string;
+  configurada: boolean;
   leads: BaseDeLeads[];
   onOpenLead: (lead: BaseDeLeads) => void;
   agora: number;
@@ -129,7 +142,7 @@ interface ColumnProps {
 
 const LEADS_POR_PAGINA = 8;
 
-function Column({ id, label, color, leads, onOpenLead, agora, statusAtendimentoPorLead }: ColumnProps) {
+function Column({ id, label, color, configurada, leads, onOpenLead, agora, statusAtendimentoPorLead }: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const [pagina, setPagina] = useState(1);
 
@@ -157,6 +170,11 @@ function Column({ id, label, color, leads, onOpenLead, agora, statusAtendimentoP
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
           <span className="text-sm font-semibold text-gray-800">{label}</span>
+          {!configurada && (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+              Legado
+            </span>
+          )}
         </div>
         <span className="text-xs text-gray-500">{leads.length}</span>
       </div>
@@ -209,8 +227,56 @@ export default function PipelinePage() {
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState<string>('Usuário');
   const [agora, setAgora] = useState(() => Date.now());
+  const [fechamentoPendente, setFechamentoPendente] = useState<BaseDeLeads | null>(null);
+  const [dadosFechamento, setDadosFechamento] = useState({ nome: '', valor: '' });
+  const [salvandoFechamento, setSalvandoFechamento] = useState(false);
+  const [errosFechamento, setErrosFechamento] = useState<string[]>([]);
+  const [veiculosVenda, setVeiculosVenda] = useState<VeiculoVenda[]>([]);
+  const [veiculoId, setVeiculoId] = useState('');
+  const [buscaVeiculo, setBuscaVeiculo] = useState('');
+  const [listaVeiculosAberta, setListaVeiculosAberta] = useState(false);
+  const [carregandoVeiculos, setCarregandoVeiculos] = useState(false);
+  const [celebracao, setCelebracao] = useState<string | null>(null);
+  const fecharCelebracao = useCallback(() => setCelebracao(null), []);
+  const { etapas, erroEtapas } = usePipelineEtapas();
   const filters = useLeadFilters(leads);
   const { leadsFiltrados } = filters;
+  const filteredVehicles = useMemo(() => {
+    const termo = normalizarBusca(buscaVeiculo.trim());
+    if (!termo) return veiculosVenda;
+    return veiculosVenda.filter((veiculo) => normalizarBusca(textoVeiculo(veiculo)).includes(termo));
+  }, [buscaVeiculo, veiculosVenda]);
+
+  useEffect(() => {
+    if (!fechamentoPendente) return;
+    let ativo = true;
+    setCarregandoVeiculos(true);
+    const supabase = createClient();
+    void supabase.from('ESTOQUE').select('id, marca, modelo, ano, placa, status').order('marca')
+      .then(({ data, error }) => {
+        if (!ativo) return;
+        const disponiveis = error ? [] : ((data ?? []) as VeiculoVenda[]).filter(
+          (veiculo) => normalizarBusca(veiculo.status ?? '') === 'disponivel'
+        );
+        setVeiculosVenda(disponiveis);
+        setCarregandoVeiculos(false);
+      });
+    return () => { ativo = false; };
+  }, [fechamentoPendente]);
+
+  const colunas = useMemo<Coluna[]>(() => {
+    const configuradas = etapas.map((etapa) => ({
+      id: etapa.slug,
+      label: etapa.nome,
+      color: etapa.cor,
+      configurada: true,
+    }));
+    const conhecidas = new Set(configuradas.map((coluna) => coluna.id));
+    const legadas = Array.from(new Set(leadsFiltrados.map((lead) => normalizeEstagio(lead.estagio_lead))))
+      .filter((slug) => slug && !conhecidas.has(slug))
+      .map((slug) => ({ id: slug, label: slug, color: '#6b7280', configurada: false }));
+    return [...configuradas, ...legadas];
+  }, [etapas, leadsFiltrados]);
 
   // Tick de 1s só para recalcular a contagem regressiva dos timers nos cards, sem re-buscar
   // os leads do banco.
@@ -263,7 +329,7 @@ export default function PipelinePage() {
       const { data, error } = await supabase
         .from('BASE_DE_LEADS')
         .select(
-          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, follow_manual, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes'
+          'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, bot_ativo_alterado_em, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, follow_manual, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes'
         )
         .order('created_at', { ascending: false });
 
@@ -278,20 +344,23 @@ export default function PipelinePage() {
       setLoading(false);
     }
 
+    const atualizarAtribuicoes = () => void fetchLeads();
     fetchLeads();
+    window.addEventListener('lead-assignments-changed', atualizarAtribuicoes);
     return () => {
       isMounted = false;
+      window.removeEventListener('lead-assignments-changed', atualizarAtribuicoes);
     };
   }, []);
 
   const leadsPorColuna = useMemo(() => {
-    const map = new Map<ColunaId, BaseDeLeads[]>(COLUNAS.map((c) => [c.id, []]));
+    const map = new Map<string, BaseDeLeads[]>(colunas.map((c) => [c.id, []]));
     leadsFiltrados.forEach((lead) => {
       const coluna = normalizeEstagio(lead.estagio_lead);
       map.get(coluna)?.push(lead);
     });
     return map;
-  }, [leadsFiltrados]);
+  }, [colunas, leadsFiltrados]);
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -299,20 +368,29 @@ export default function PipelinePage() {
 
     const leadId = Number(active.id);
     const overId = over.id;
-    const colunaDireta = COLUNAS.find((c) => c.id === overId)?.id;
+    const colunaDireta = colunas.find((c) => c.id === overId && c.configurada)?.id;
     const leadDestino = leads.find((l) => l.id === Number(overId));
     const novoEstagio = colunaDireta ?? (leadDestino ? normalizeEstagio(leadDestino.estagio_lead) : null);
     if (!novoEstagio) return;
+    if (!colunas.some((coluna) => coluna.id === novoEstagio && coluna.configurada)) return;
 
     const leadAtual = leads.find((l) => l.id === leadId);
     if (!leadAtual) return;
 
     const estagioAnterior = leadAtual.estagio_lead;
     if (normalizeEstagio(estagioAnterior) === novoEstagio) return;
+    if (novoEstagio === 'fechado') {
+      const validacao = validarFechamento(leadAtual.nome_lead, leadAtual.valor);
+      setFechamentoPendente(leadAtual);
+      setDadosFechamento({ nome: leadAtual.nome_lead ?? '', valor: leadAtual.valor ? String(leadAtual.valor) : '' });
+      setErrosFechamento(validacao.erros);
+      setVeiculoId('');
+      setBuscaVeiculo('');
+      setListaVeiculosAberta(false);
+      return;
+    }
 
-    const entrandoEmFollowUp = novoEstagio === 'follow_up';
-    const saindoDeFollowUp = normalizeEstagio(estagioAnterior) === 'follow_up' && !entrandoEmFollowUp;
-    const followManual = entrandoEmFollowUp ? 'ativo' : saindoDeFollowUp ? 'inativo' : undefined;
+    const followManual = novoEstagio === 'follow_up' ? 'ativo' : 'inativo';
 
     // Optimistic update: atualiza a UI imediatamente para dar sensação de resposta instantânea
     // no drag and drop, antes mesmo de confirmar a escrita no banco.
@@ -322,7 +400,7 @@ export default function PipelinePage() {
           ? {
               ...l,
               estagio_lead: novoEstagio,
-              ...(followManual ? { follow_manual: followManual } : {}),
+              follow_manual: followManual,
             }
           : l
       )
@@ -363,7 +441,7 @@ export default function PipelinePage() {
       .update({
         estagio_lead: novoEstagio,
         ...camposNegociacaoCompletos,
-        ...(followManual ? { follow_manual: followManual } : {}),
+        follow_manual: followManual,
       })
       .eq('id', leadId);
 
@@ -385,7 +463,7 @@ export default function PipelinePage() {
         .update({
           estagio_lead: novoEstagio,
           ...camposBasicos,
-          ...(followManual ? { follow_manual: followManual } : {}),
+          follow_manual: followManual,
         })
         .eq('id', leadId));
     }
@@ -409,6 +487,32 @@ export default function PipelinePage() {
 
   }
 
+  async function confirmarFechamento() {
+    if (!fechamentoPendente || salvandoFechamento) return;
+    const validacao = validarFechamento(dadosFechamento.nome, dadosFechamento.valor);
+    const erros = [...validacao.erros];
+    if (!veiculoId) erros.push('Selecione o veículo vendido.');
+    setErrosFechamento(erros);
+    if (!validacao.valido || !veiculoId) return;
+    setSalvandoFechamento(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc('fechar_venda_com_veiculo', {
+      p_id_lead: fechamentoPendente.id,
+      p_nome: validacao.nome,
+      p_valor: validacao.valor,
+      p_estoque_id: veiculoId,
+    });
+    setSalvandoFechamento(false);
+    const confirmado = (Array.isArray(data) ? data[0] : data) as BaseDeLeads | null;
+    if (error || !confirmado || confirmado.estagio_lead !== 'fechado') {
+      setErrosFechamento(['Não foi possível concluir a venda. Tente novamente.']);
+      return;
+    }
+    setLeads((atuais) => atuais.map((l) => l.id === confirmado.id ? { ...l, ...confirmado } : l));
+    setFechamentoPendente(null);
+    setCelebracao(confirmado.nome_lead);
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div>
@@ -422,19 +526,26 @@ export default function PipelinePage() {
         <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{errorMessage}</div>
       )}
 
+      {erroEtapas && (
+        <div className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
+          Nao foi possivel carregar as etapas configuradas. Usando o padrao local temporariamente.
+        </div>
+      )}
+
       <LeadFiltersBar filters={filters} />
 
       {loading ? (
-        <p className="text-sm text-gray-500">Carregando...</p>
+        <AutomotiveLoading label="Carregando pipeline" />
       ) : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-4">
-            {COLUNAS.map((coluna) => (
+            {colunas.map((coluna) => (
               <Column
                 key={coluna.id}
                 id={coluna.id}
                 label={coluna.label}
                 color={coluna.color}
+                configurada={coluna.configurada}
                 leads={leadsPorColuna.get(coluna.id) ?? []}
                 onOpenLead={setLeadSelecionado}
                 agora={agora}
@@ -449,21 +560,108 @@ export default function PipelinePage() {
         <LeadDrawer
           lead={leadSelecionado}
           estagioLabel={
-            COLUNAS.find((c) => c.id === normalizeEstagio(leadSelecionado.estagio_lead))?.label ??
+            colunas.find((c) => c.id === normalizeEstagio(leadSelecionado.estagio_lead))?.label ??
             'Oportunidade'
           }
           estagioColor={
-            COLUNAS.find((c) => c.id === normalizeEstagio(leadSelecionado.estagio_lead))?.color ??
+            colunas.find((c) => c.id === normalizeEstagio(leadSelecionado.estagio_lead))?.color ??
             '#22c55e'
           }
-          estagioLabelOf={(estagio) => COLUNAS.find((c) => c.id === normalizeEstagio(estagio))?.label ?? estagio}
+          estagioLabelOf={(estagio) => etapaDe(estagio, etapas).nome}
           onClose={() => setLeadSelecionado(null)}
           onUpdated={(atualizado) => {
             setLeadSelecionado(atualizado);
             setLeads((prev) => prev.map((l) => (l.id === atualizado.id ? atualizado : l)));
           }}
+          onDeleted={(leadId) => {
+            setLeads((leadsAtuais) => leadsAtuais.filter((item) => item.id !== leadId));
+            setLeadSelecionado(null);
+          }}
         />
       )}
+      {fechamentoPendente && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="fechar-venda-titulo">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h2 id="fechar-venda-titulo" className="text-xl font-bold">Concluir venda</h2>
+            <p className="mt-1 text-sm text-gray-500">Confirme os dados obrigatórios antes de fechar.</p>
+            <label className="mt-4 block text-sm">Nome
+              <input value={dadosFechamento.nome} onChange={(e) => setDadosFechamento((d) => ({ ...d, nome: e.target.value }))}
+                className="mt-1 w-full rounded-lg border px-3 py-2" />
+            </label>
+            <label className="mt-3 block text-sm">Valor
+              <input type="number" min="0.01" step="0.01" value={dadosFechamento.valor}
+                onChange={(e) => setDadosFechamento((d) => ({ ...d, valor: e.target.value }))}
+                className="mt-1 w-full rounded-lg border px-3 py-2" />
+            </label>
+            <label className="mt-3 block text-sm">Veículo vendido</label>
+            <div className="relative mt-1">
+              <input
+                role="combobox"
+                aria-expanded={listaVeiculosAberta}
+                aria-controls="veiculos-venda-lista"
+                autoComplete="off"
+                value={buscaVeiculo}
+                placeholder="Digite marca, modelo, ano ou placa"
+                disabled={carregandoVeiculos}
+                onFocus={() => setListaVeiculosAberta(true)}
+                onChange={(e) => {
+                  setBuscaVeiculo(e.target.value);
+                  setVeiculoId('');
+                  setListaVeiculosAberta(true);
+                }}
+                className="w-full rounded-lg border px-3 py-2 pr-9"
+              />
+              <button
+                type="button"
+                aria-label="Abrir lista de veículos"
+                disabled={carregandoVeiculos}
+                onClick={() => setListaVeiculosAberta((aberta) => !aberta)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-gray-500"
+              >
+                ⌄
+              </button>
+              {listaVeiculosAberta && !carregandoVeiculos && (
+                <div
+                  id="veiculos-venda-lista"
+                  role="listbox"
+                  className="absolute left-0 top-full z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xl"
+                >
+                  {filteredVehicles.length > 0 ? filteredVehicles.map((veiculo) => (
+                    <button
+                      key={veiculo.id}
+                      type="button"
+                      role="option"
+                      aria-selected={veiculoId === String(veiculo.id)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setVeiculoId(String(veiculo.id));
+                        setBuscaVeiculo(textoVeiculo(veiculo));
+                        setListaVeiculosAberta(false);
+                      }}
+                      className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                        veiculoId === String(veiculo.id) ? 'bg-primary/10 font-medium text-primary' : 'text-gray-800'
+                      }`}
+                    >
+                      {textoVeiculo(veiculo)}
+                    </button>
+                  )) : (
+                    <p className="px-3 py-3 text-sm text-gray-500">Nenhum veículo encontrado.</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {!carregandoVeiculos && veiculosVenda.length === 0 && (
+              <p className="mt-2 text-xs text-red-600">Nenhum veículo disponível no estoque.</p>
+            )}
+            {errosFechamento.length > 0 && <ul role="alert" className="mt-3 text-sm text-red-600">{errosFechamento.map((e) => <li key={e}>{e}</li>)}</ul>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={salvandoFechamento} onClick={() => setFechamentoPendente(null)} className="rounded-lg border px-4 py-2">Cancelar</button>
+              <button type="button" disabled={salvandoFechamento} onClick={() => void confirmarFechamento()} className="rounded-lg bg-primary px-4 py-2 text-white">{salvandoFechamento ? 'Salvando...' : 'Concluir venda'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {celebracao && <SaleCelebration leadName={celebracao} onClose={fecharCelebracao} />}
     </div>
   );
 }

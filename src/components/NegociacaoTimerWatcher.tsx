@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads, Cargo } from '@/types/database';
 import { formatContagem } from '@/lib/negociacao/tempo';
 import { statusAtendimentoDoLead, type StatusAtendimento } from '@/lib/negociacao/etiquetasAtendimento';
-import { ESTAGIO_CONFIG } from '@/components/StatusBadge';
 import { LeadDrawer } from '@/components/LeadDrawer';
+import { usePipelineEtapas } from '@/hooks/usePipelineEtapas';
+import { etapaDe } from '@/lib/pipeline-etapas';
 
 // Watcher client-side do cronômetro de 30min de "Em Negociação":
 // - Faz polling (20s) dos leads ativos nesse estágio e mantém um painel flutuante com a
@@ -33,7 +34,7 @@ interface LeadNegociacao {
 const INTERVALO_POLL_MS = 20_000;
 const INTERVALO_TICK_MS = 1_000;
 const LEAD_COMPLETO_SELECT =
-  'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes, negociacao_notificacao_status, negociacao_notificacao_tentativas, negociacao_notificacao_erro, negociacao_notificacao_reivindicada_em';
+  'id, id_empresa, nome_lead, telefone, email, origem, vendedor, veiculo_interesse, resumo_qualificacao, estagio_lead, resumo_comercial, created_at, updated_at, valor, observacao_vendedor, bot_ativo, bot_ativo_alterado_em, "Etapa", "QuemEnviouMsg", "UltimaMensagem", StatusDeFollow:"Status de Follow", "Transferencia", PesquisaDeSatisfacao:"Pesquisa de satisfação", IdContatoClick:"ID CONTATO CLICK", lid, DataEHora:"Data e Hora", cpf, data_nascimento, score_serasa, negociacao_expira_em, negociacao_notificado_em, negociacao_extensoes, negociacao_notificacao_status, negociacao_notificacao_tentativas, negociacao_notificacao_erro, negociacao_notificacao_reivindicada_em';
 
 interface NegociacaoTimerWatcherProps {
   userCargo: Cargo;
@@ -92,6 +93,7 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
   const [leadSelecionado, setLeadSelecionado] = useState<BaseDeLeads | null>(null);
   const [estendendo, setEstendendo] = useState(false);
   const [leadParaExcluir, setLeadParaExcluir] = useState<LeadNegociacao | null>(null);
+  const { etapas } = usePipelineEtapas();
 
   const podeEstender = userCargo === 'admin_master' || userCargo === 'admin' || userCargo === 'gerente';
 
@@ -246,11 +248,11 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
   }
 
   function estagioLabelOf(estagio: string | null | undefined) {
-    return ESTAGIO_CONFIG[(estagio ?? '').toLowerCase().trim()]?.label ?? 'Desconhecido';
+    return etapaDe(estagio, etapas).nome;
   }
 
   function estagioColorOf(estagio: string | null | undefined) {
-    return ESTAGIO_CONFIG[(estagio ?? '').toLowerCase().trim()]?.color ?? '#6b7280';
+    return etapaDe(estagio, etapas).cor;
   }
 
   async function estenderPrazo(lead: LeadNegociacao) {
@@ -485,6 +487,10 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
                   : lead
               )
             );
+          }}
+          onDeleted={(leadId) => {
+            setNegociacoes((leadsAtuais) => leadsAtuais.filter((item) => item.id !== leadId));
+            setLeadSelecionado(null);
           }}
         />
       )}
