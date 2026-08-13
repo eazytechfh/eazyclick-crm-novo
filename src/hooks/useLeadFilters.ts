@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/client';
 import type { BaseDeLeads, Etiqueta } from '@/types/database';
 import { isDentroExpediente } from '@/lib/expediente';
 import type { PillOption } from '@/components/PillFilter';
+import { getCustomDateBoundaries, getDefaultCustomDateRange, type Periodo } from '@/lib/lead-period-filter';
 
-export type Periodo = 'hoje' | 'ontem' | '7d' | '30d' | '90d' | 'todos';
 export type Expediente = 'todos' | 'dentro' | 'fora';
 
 export const PERIODO_OPTIONS: PillOption<Periodo>[] = [
@@ -13,6 +13,7 @@ export const PERIODO_OPTIONS: PillOption<Periodo>[] = [
   { value: '7d', label: '7 dias' },
   { value: '30d', label: '30 dias' },
   { value: '90d', label: '90 dias' },
+  { value: 'personalizado', label: 'Personalizado' },
   { value: 'todos', label: 'Todos' },
 ];
 
@@ -36,6 +37,8 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
   const [veiculoFiltro, setVeiculoFiltro] = useState('todos');
   const [etiquetaFiltro, setEtiquetaFiltro] = useState('todas');
   const [periodo, setPeriodo] = useState<Periodo>('todos');
+  const [customStart, setCustomStart] = useState(() => getDefaultCustomDateRange().start);
+  const [customEnd, setCustomEnd] = useState(() => getDefaultCustomDateRange().end);
   const [expediente, setExpediente] = useState<Expediente>('todos');
   const [etiquetasDisponiveis, setEtiquetasDisponiveis] = useState<Etiqueta[]>([]);
   const [etiquetasPorLead, setEtiquetasPorLead] = useState<Map<number, Set<number>>>(new Map());
@@ -155,7 +158,12 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
 
       if (periodo !== 'todos') {
         const created = new Date(lead.created_at);
-        const limites: Record<Exclude<Periodo, 'todos'>, Date> = {
+        if (Number.isNaN(created.getTime())) return false;
+        if (periodo === 'personalizado') {
+          const range = getCustomDateBoundaries({ start: customStart, end: customEnd });
+          if (!range || created < range.start || created > range.end) return false;
+        } else {
+        const limites: Record<Exclude<Periodo, 'personalizado' | 'todos'>, Date> = {
           hoje: daysAgo(0),
           ontem: daysAgo(1),
           '7d': daysAgo(7),
@@ -169,6 +177,7 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
           if (!(created >= inicioOntem && created < fimOntem)) return false;
         } else if (created < limites[periodo]) {
           return false;
+        }
         }
       }
 
@@ -189,6 +198,8 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     etiquetaFiltro,
     etiquetasPorLead,
     periodo,
+    customStart,
+    customEnd,
     expediente,
   ]);
 
@@ -199,6 +210,9 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     setVeiculoFiltro('todos');
     setEtiquetaFiltro('todas');
     setPeriodo('todos');
+    const customRange = getDefaultCustomDateRange();
+    setCustomStart(customRange.start);
+    setCustomEnd(customRange.end);
     setExpediente('todos');
   }
 
@@ -215,6 +229,10 @@ export function useLeadFilters(leads: BaseDeLeads[]) {
     setEtiquetaFiltro,
     periodo,
     setPeriodo,
+    customStart,
+    customEnd,
+    setCustomStart,
+    setCustomEnd,
     expediente,
     setExpediente,
     origensDisponiveis,

@@ -7,6 +7,7 @@ import {
   PERIODO_OPTIONS,
   type LeadFiltersState,
 } from '@/hooks/useLeadFilters';
+import { CustomDateRangePicker } from '@/components/CustomDateRangePicker';
 
 interface LeadFiltersBarProps {
   filters: LeadFiltersState;
@@ -123,6 +124,14 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
       </div>
 
       <PillFilter options={PERIODO_OPTIONS} selected={filters.periodo} onChange={filters.setPeriodo} />
+      {filters.periodo === 'personalizado' && (
+        <CustomDateRangePicker
+          start={filters.customStart}
+          end={filters.customEnd}
+          onStartChange={filters.setCustomStart}
+          onEndChange={filters.setCustomEnd}
+        />
+      )}
       <PillFilter
         options={EXPEDIENTE_OPTIONS}
         selected={filters.expediente}
