@@ -128,8 +128,15 @@ export default function EstoquePage() {
     setSalvandoStatus(true);
     setErroStatus(null);
     const supabase = createClient();
-    const { data, error } = await supabase.from('ESTOQUE').update({ status }).eq('id', selecionado.id)
-      .select('id, status').maybeSingle();
+    // Mapear o valor interno (sem acento/minúsculo) para a forma salva no banco
+    const dbStatus =
+      status === 'disponivel' ? 'Disponível' : status === 'indisponivel' ? 'Indisponível' : 'Vendido';
+    const { data, error } = await supabase
+      .from('ESTOQUE')
+      .update({ status: dbStatus })
+      .eq('id', selecionado.id)
+      .select('id, status')
+      .maybeSingle();
     setSalvandoStatus(false);
     if (error || !data || data.id !== selecionado.id || normalizarStatusEstoque(data.status) !== status) {
       setErroStatus('Erro ao alterar o status. Tente novamente.');
@@ -137,7 +144,7 @@ export default function EstoquePage() {
     }
     const atualizado = { ...selecionado, status };
     setSelecionado(atualizado);
-    setVeiculos((atuais) => atuais.map((v) => v.id === atualizado.id ? atualizado : v));
+    setVeiculos((atuais) => atuais.map((v) => (v.id === atualizado.id ? atualizado : v)));
   }
 
   const imagensModal = selecionado ? getImagens(selecionado) : [];
