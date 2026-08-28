@@ -6,6 +6,7 @@ import { CustomDateRangePicker } from '@/components/CustomDateRangePicker';
 import {
   EXPEDIENTE_OPTIONS,
   PERIODO_OPTIONS,
+  SEM_VENDEDOR_FILTER_VALUE,
   type LeadFiltersState,
 } from '@/hooks/useLeadFilters';
 
@@ -51,6 +52,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
         className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
       >
         <option value="todos">Todos os vendedores</option>
+        <option value={SEM_VENDEDOR_FILTER_VALUE}>Sem vendedor</option>
         {filters.vendedoresDisponiveis.map((vendedor) => (
           <option key={vendedor} value={vendedor}>
             {vendedor}
