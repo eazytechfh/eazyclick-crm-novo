@@ -24,8 +24,8 @@ export function CustomDateRangePicker({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-      <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60">
+      <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
         De
         <input
           type="date"
@@ -33,10 +33,10 @@ export function CustomDateRangePicker({
           value={start}
           max={end}
           onChange={(event) => handleStartChange(event.target.value)}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm font-normal text-gray-700 outline-none focus:border-primary"
+          className="rounded-md border border-gray-300 px-2 py-1 text-sm font-normal text-gray-700 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
         />
       </label>
-      <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+      <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
         Até
         <input
           type="date"
@@ -44,7 +44,7 @@ export function CustomDateRangePicker({
           value={end}
           min={start}
           onChange={(event) => handleEndChange(event.target.value)}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm font-normal text-gray-700 outline-none focus:border-primary"
+          className="rounded-md border border-gray-300 px-2 py-1 text-sm font-normal text-gray-700 outline-none focus:border-primary dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
         />
       </label>
     </div>

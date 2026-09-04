@@ -30,13 +30,13 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
         placeholder="Buscar por nome, telefone ou e-mail..."
         value={filters.busca}
         onChange={(e) => filters.setBusca(e.target.value)}
-        className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+        className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
       />
 
       <select
         value={filters.origemFiltro}
         onChange={(e) => filters.setOrigemFiltro(e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
       >
         <option value="todas">Todas as origens</option>
         {filters.origensDisponiveis.map((origem) => (
@@ -49,7 +49,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
       <select
         value={filters.vendedorFiltro}
         onChange={(e) => filters.setVendedorFiltro(e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
       >
         <option value="todos">Todos os vendedores</option>
         <option value={SEM_VENDEDOR_FILTER_VALUE}>Sem vendedor</option>
@@ -63,7 +63,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
       <select
         value={filters.veiculoFiltro}
         onChange={(e) => filters.setVeiculoFiltro(e.target.value)}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+        className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
       >
         <option value="todos">Todos os veículos</option>
         {filters.veiculosDisponiveis.map((veiculo) => (
@@ -77,7 +77,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
         <button
           type="button"
           onClick={() => setEtiquetasOpen((open) => !open)}
-          className="flex min-w-[190px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+          className="flex min-w-[190px] items-center justify-between gap-3 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-white/5 dark:text-gray-300"
         >
           <span className="flex min-w-0 items-center gap-2">
             <span
@@ -86,18 +86,18 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
             />
             <span className="truncate">{etiquetaSelecionada?.nome ?? 'Todas as etiquetas'}</span>
           </span>
-          <span className="text-xs text-gray-400">v</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">v</span>
         </button>
 
         {etiquetasOpen && (
-          <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-full min-w-[220px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="absolute left-0 top-full z-20 mt-1 max-h-64 w-full min-w-[220px] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
             <button
               type="button"
               onClick={() => {
                 filters.setEtiquetaFiltro('todas');
                 setEtiquetasOpen(false);
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />
               Todas as etiquetas
@@ -111,7 +111,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
                   filters.setEtiquetaFiltro(String(etiqueta.id));
                   setEtiquetasOpen(false);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: etiqueta.cor }} />
                 <span className="truncate">{etiqueta.nome}</span>
@@ -119,7 +119,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
             ))}
 
             {filters.etiquetasDisponiveis.length === 0 && (
-              <p className="px-3 py-2 text-xs text-gray-400">Nenhuma etiqueta cadastrada.</p>
+              <p className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">Nenhuma etiqueta cadastrada.</p>
             )}
           </div>
         )}
@@ -143,7 +143,7 @@ export function LeadFiltersBar({ filters }: LeadFiltersBarProps) {
       <button
         type="button"
         onClick={filters.limparFiltros}
-        className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+        className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
       >
         Limpar filtros
       </button>

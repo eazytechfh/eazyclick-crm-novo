@@ -9,12 +9,63 @@
   --color-texto: #111827;
   --color-primaria: #111827;
   --color-secundaria: #3b82f6;
+  /* Neutro de sistema (cards/modais), não é branding por cliente. Fica como variable, e não
+     hex fixo no Tailwind config, para que o tema escuro só precise sobrescrever isto. */
+  --color-cartao: #ffffff;
+  /* Variantes "-ativa"/"-ativo": no claro são idênticas ao token de marca/neutro; o .dark abaixo
+     as sobrescreve. Por que a indireção em vez de sobrescrever --color-fundo/--color-texto
+     direto: o RootLayout injeta um <style>{':root {...}'}</style> com as cores de branding do
+     cliente, e esse <style> vem DEPOIS deste arquivo no <head> — na mesma especificidade
+     (:root vs .dark, ambos 0,1,0), quem vem depois no documento vence. Sem a indireção, aquele
+     <style> de branding sobrescreveria de volta o valor escuro, e o app ficaria com fundo/texto
+     claros mesmo com .dark ativo (só --color-cartao, que o branding não toca, escureceria).
+     Para --color-primaria/--color-secundaria a indireção também evita um ciclo: color-mix(in
+     oklab, var(--color-primaria), ...) referenciando a própria variável dentro da sua própria
+     declaração seria inválido no navegador. */
+  --color-fundo-ativo: var(--color-fundo);
+  --color-texto-ativo: var(--color-texto);
+  --color-primaria-ativa: var(--color-primaria);
+  --color-secundaria-ativa: var(--color-secundaria);
+}
+
+.dark {
+  color-scheme: dark;
+  --color-cartao: #1c2128;
+  --color-fundo-ativo: #0f1117;
+  --color-texto-ativo: #f3f4f6;
+  /* Fallback para navegadores sem oklch(from ...) (ver @supports abaixo): clareia sempre em 35%/
+     15%, o que é ok para cores escuras mas lava cores já vivas (ex.: um vermelho de marca vira
+     rosa). O bloco @supports logo depois substitui isto num navegador atual por um "piso" de
+     luminosidade que só mexe em cores realmente escuras. */
+  --color-primaria-ativa: color-mix(in oklab, var(--color-primaria), white 35%);
+  --color-secundaria-ativa: color-mix(in oklab, var(--color-secundaria), white 15%);
+}
+
+@supports (color: oklch(from red l c h)) {
+  .dark {
+    /* Piso de luminosidade (não soma fixa): se a cor de marca já é clara/viva o suficiente para
+       ler bem no escuro (ex.: vermelho, azul), max(l, 0.55) não muda nada — fica exatamente a
+       mesma cor do claro. Só cores realmente escuras (o grafite padrão, l≈0.19) são elevadas até
+       0.55. Croma e matiz (c h) ficam intocados, então a cor não perde saturação/vira pastel como
+       aconteceria com color-mix(..., white ...). */
+    --color-primaria-ativa: oklch(from var(--color-primaria) max(l, 0.55) c h);
+    --color-secundaria-ativa: oklch(from var(--color-secundaria) max(l, 0.55) c h);
+  }
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: #1c2128;
+  color: #f3f4f6;
 }
 
 html,
 body {
-  background-color: var(--color-fundo);
-  color: var(--color-texto);
+  background-color: var(--color-fundo-ativo);
+  color: var(--color-texto-ativo);
 }
 
 * {

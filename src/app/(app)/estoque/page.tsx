@@ -15,7 +15,7 @@ function getImagens(veiculo: Estoque): string[] {
 
 function Placeholder() {
   return (
-    <div className="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
+    <div className="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-600">
       <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10">
         <path
           d="M3 11l2-6h14l2 6M5 11h14v7a1 1 0 01-1 1H6a1 1 0 01-1-1v-7z"
@@ -153,7 +153,7 @@ export default function EstoquePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Estoque</h1>
-        <p className="text-sm text-gray-500">{veiculosFiltrados.length} veículo(s) encontrado(s)</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{veiculosFiltrados.length} veículo(s) encontrado(s)</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl bg-card p-4 shadow-sm">
@@ -162,12 +162,12 @@ export default function EstoquePage() {
           placeholder="Buscar por marca, modelo ou placa..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary"
+          className="min-w-[220px] flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
         />
         <select
           value={marcaFiltro}
           onChange={(e) => setMarcaFiltro(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
         >
           <option value="todas">Todas as marcas</option>
           {marcasDisponiveis.map((m) => (
@@ -179,7 +179,7 @@ export default function EstoquePage() {
         <select
           value={statusFiltro}
           onChange={(e) => setStatusFiltro(e.target.value)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
         >
           <option value="todos">Todos os status</option>
           <option value="disponivel">Disponíveis</option>
@@ -202,7 +202,7 @@ export default function EstoquePage() {
                 onClick={() => abrirModal(veiculo)}
                 className="overflow-hidden rounded-xl bg-card text-left shadow-sm transition hover:shadow-md"
               >
-                <div className="relative h-40 w-full bg-gray-100">
+                <div className="relative h-40 w-full bg-gray-100 dark:bg-gray-800">
                   {primeiraImagem ? (
                     // unoptimized: as URLs vêm de fontes arbitrárias cadastradas manualmente no
                     // banco (sem controle sobre o domínio/CDN), então desativamos a otimização do
@@ -223,7 +223,7 @@ export default function EstoquePage() {
                   <p className="truncate text-sm font-semibold text-foreground">
                     {veiculo.marca} {veiculo.modelo}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {veiculo.ano ?? '—'} · {veiculo.cor ?? '—'}
                   </p>
                   <p className="mt-1 text-sm font-medium text-foreground">{veiculo.valor ?? '—'}</p>
@@ -232,7 +232,7 @@ export default function EstoquePage() {
             );
           })}
           {veiculosFiltrados.length === 0 && (
-            <p className="text-sm text-gray-400">Nenhum veículo encontrado.</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">Nenhum veículo encontrado.</p>
           )}
         </div>
       )}
@@ -243,10 +243,10 @@ export default function EstoquePage() {
           onClick={() => setSelecionado(null)}
         >
           <div
-            className="w-full max-w-lg rounded-xl bg-white p-5"
+            className="w-full max-w-lg rounded-xl bg-card p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative mb-4 h-64 w-full overflow-hidden rounded-lg bg-gray-100">
+            <div className="relative mb-4 h-64 w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
               {imagensModal.length > 0 ? (
                 <Image
                   src={imagensModal[imagemIndex]}
@@ -266,7 +266,7 @@ export default function EstoquePage() {
                     onClick={() =>
                       setImagemIndex((i) => (i === 0 ? imagensModal.length - 1 : i - 1))
                     }
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-sm shadow"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-sm text-gray-900 shadow"
                   >
                     ‹
                   </button>
@@ -275,7 +275,7 @@ export default function EstoquePage() {
                     onClick={() =>
                       setImagemIndex((i) => (i === imagensModal.length - 1 ? 0 : i + 1))
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-sm shadow"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-sm text-gray-900 shadow"
                   >
                     ›
                   </button>
@@ -286,27 +286,27 @@ export default function EstoquePage() {
             <h2 className="text-lg font-bold text-foreground">
               {selecionado.marca} {selecionado.modelo}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               {selecionado.ano} · {selecionado.cor} · {selecionado.combustivel}
             </p>
-            <p className="mt-2 text-sm text-gray-700">Placa: {selecionado.placa ?? '—'}</p>
-            <p className="text-sm text-gray-700">
+            <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">Placa: {selecionado.placa ?? '—'}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               Quilometragem: {selecionado.quilometragem ?? '—'} km
             </p>
-            <p className="text-sm text-gray-700">Motor: {selecionado.motor ?? '—'}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">Motor: {selecionado.motor ?? '—'}</p>
             <p className="mt-2 text-lg font-bold text-foreground">{selecionado.valor ?? '—'}</p>
-            <label className="mt-4 block text-sm font-medium text-gray-700">
+            <label className="mt-4 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Status
               <select value={normalizarStatusEstoque(selecionado.status) ?? 'indisponivel'}
                 onChange={(e) => void alterarStatus(e.target.value as StatusEstoque)}
                 disabled={salvandoStatus}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-white/5 dark:text-gray-100">
                 <option value="disponivel">Disponível</option>
                 <option value="indisponivel">Indisponível</option>
                 <option value="vendido">Vendido</option>
               </select>
             </label>
-            {erroStatus && <p role="alert" className="mt-2 text-sm text-red-600">{erroStatus}</p>}
+            {erroStatus && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{erroStatus}</p>}
 
             <button
               type="button"

@@ -138,54 +138,54 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-lg">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-foreground">Novo lead</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300"
             aria-label="Fechar"
           >
             ✕
           </button>
         </div>
 
-        {erro && <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>}
+        {erro && <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{erro}</div>}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Nome *</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Nome *</label>
             <input
               value={form.nome_lead}
               onChange={(e) => set('nome_lead', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Telefone *</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Telefone *</label>
             <input
               value={form.telefone}
               onChange={(e) => set('telefone', e.target.value)}
               placeholder="5599999999999"
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Email</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Email</label>
             <input
               type="email"
               value={form.email}
               onChange={(e) => set('email', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Origem</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Origem</label>
             <select
               value={form.origem}
               onChange={(e) => set('origem', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             >
               <option value="">Selecione</option>
               {ORIGENS.map((o) => (
@@ -196,11 +196,11 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Vendedor</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Vendedor</label>
             <select
               value={form.vendedor}
               onChange={(e) => set('vendedor', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             >
               <option value="">Sem vendedor</option>
               {vendedores.map((v) => (
@@ -211,11 +211,11 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Estágio inicial</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Estágio inicial</label>
             <select
               value={form.estagio_lead}
               onChange={(e) => set('estagio_lead', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             >
               {etapas.map((estagio) => (
                 <option key={estagio.slug} value={estagio.slug}>
@@ -225,66 +225,66 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Veículo de interesse</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Veículo de interesse</label>
             <input
               value={form.veiculo_interesse}
               onChange={(e) => set('veiculo_interesse', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Valor</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Valor</label>
             <input
               type="number"
               step="0.01"
               value={form.valor}
               onChange={(e) => set('valor', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">CPF</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">CPF</label>
             <input
               value={form.cpf}
               onChange={(e) => set('cpf', e.target.value)}
               placeholder="000.000.000-00"
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Data de nascimento</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Data de nascimento</label>
             <input
               type="date"
               value={form.data_nascimento}
               onChange={(e) => set('data_nascimento', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-gray-500">Score Serasa</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Score Serasa</label>
             <input
               type="number"
               value={form.score_serasa}
               onChange={(e) => set('score_serasa', e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div className="col-span-2">
-            <label className="mb-1 block text-xs text-gray-500">Resumo comercial</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Resumo comercial</label>
             <textarea
               value={form.resumo_comercial}
               onChange={(e) => set('resumo_comercial', e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
           <div className="col-span-2">
-            <label className="mb-1 block text-xs text-gray-500">Observação do vendedor</label>
+            <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">Observação do vendedor</label>
             <textarea
               value={form.observacao_vendedor}
               onChange={(e) => set('observacao_vendedor', e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm"
+              className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
             />
           </div>
         </div>
@@ -293,7 +293,7 @@ export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             Cancelar
           </button>

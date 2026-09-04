@@ -311,9 +311,9 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
     <>
       {leadPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg">
+          <div className="w-full max-w-sm rounded-xl bg-card p-6 shadow-lg">
             <h2 className="text-lg font-bold text-foreground">Tempo de negociação esgotado</h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               O lead{' '}
               <button
                 type="button"
@@ -334,7 +334,7 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={fecharPopup}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 Fechar
               </button>
@@ -354,9 +354,9 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
 
       {leadParaExcluir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg">
+          <div className="w-full max-w-sm rounded-xl bg-card p-6 shadow-lg">
             <h2 className="text-lg font-bold text-foreground">Excluir notificação</h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
               Isso vai cancelar o cronômetro de negociação do lead{' '}
               <span className="font-medium">{leadParaExcluir.nome_lead}</span> e remover esta
               notificação. Essa ação não pode ser desfeita.
@@ -364,7 +364,7 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => setLeadParaExcluir(null)}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 Cancelar
               </button>
@@ -386,7 +386,7 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
         {minimizado ? (
           <button
             onClick={() => setMinimizado(false)}
-            className="relative flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-lg hover:opacity-90"
+            className="relative flex h-12 w-12 items-center justify-center rounded-full bg-card shadow-lg hover:opacity-90"
             title="Negociações ativas"
           >
             <SininhoIcon className="h-6 w-6 text-red-500" />
@@ -397,20 +397,20 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
             )}
           </button>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-card shadow-lg dark:border-gray-800">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
               <div className="flex items-center gap-2">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/40">
                   <SininhoIcon className="h-5 w-5 text-red-500" />
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-foreground">Negociações</p>
-                  <p className="text-xs text-gray-500">{negociacoesOrdenadas.length} ativo(s)</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{negociacoesOrdenadas.length} ativo(s)</p>
                 </div>
               </div>
               <button
                 onClick={() => setMinimizado(true)}
-                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-300"
                 title="Minimizar"
               >
                 &#8211;
@@ -419,7 +419,7 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
 
             <div className="max-h-80 overflow-y-auto">
               {negociacoesOrdenadas.length === 0 ? (
-                <p className="px-4 py-6 text-center text-xs text-gray-400">Nenhuma negociação ativa.</p>
+                <p className="px-4 py-6 text-center text-xs text-gray-400 dark:text-gray-400">Nenhuma negociação ativa.</p>
               ) : (
                 negociacoesOrdenadas.map((lead) => {
                   const finalizado = lead.statusAtendimento === 'finalizado';
@@ -427,31 +427,31 @@ export function NegociacaoTimerWatcher({ userCargo }: NegociacaoTimerWatcherProp
                   const vencido = !finalizado && restante <= 0;
                   const iniciado = lead.statusAtendimento === 'iniciado';
                   const corTempo = finalizado
-                    ? 'text-gray-400'
+                    ? 'text-gray-400 dark:text-gray-400'
                     : iniciado
-                      ? 'text-green-600'
+                      ? 'text-green-600 dark:text-green-400'
                       : vencido
-                        ? 'text-red-600'
-                        : 'text-gray-700';
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-gray-700 dark:text-gray-300';
                   return (
-                    <div key={lead.id} className="border-b border-gray-100 px-4 py-3 last:border-b-0">
+                    <div key={lead.id} className="border-b border-gray-100 px-4 py-3 last:border-b-0 dark:border-gray-800">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-medium text-foreground">{lead.nome_lead}</p>
                         <span className={`text-sm font-semibold ${corTempo}`}>
                           {finalizado ? 'Finalizado' : vencido && !iniciado ? 'Vencido' : formatContagem(restante)}
                         </span>
                       </div>
-                      {lead.vendedor && <p className="truncate text-xs text-gray-500">{lead.vendedor}</p>}
+                      {lead.vendedor && <p className="truncate text-xs text-gray-500 dark:text-gray-400">{lead.vendedor}</p>}
                       <div className="mt-2 flex justify-end gap-3">
                         <button
                           onClick={() => cancelarCronometro(lead)}
-                          className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                          className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                         >
                           Cancelar
                         </button>
                         <button
                           onClick={() => setLeadParaExcluir(lead)}
-                          className="text-xs font-medium text-red-600 hover:text-red-700"
+                          className="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         >
                           Excluir
                         </button>

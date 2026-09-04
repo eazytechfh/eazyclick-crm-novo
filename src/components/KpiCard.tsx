@@ -15,14 +15,14 @@ export function KpiCard({ label, value, variation, dotColor = '#22c55e', childre
     <div className="rounded-xl bg-card p-5 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
-        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
       </div>
       <div className="text-2xl font-bold text-foreground">{value}</div>
       {typeof variation === 'number' && (
         <div
           className={clsx(
             'mt-1 text-xs font-medium',
-            isPositive ? 'text-green-600' : 'text-red-600'
+            isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
           )}
         >
           {isPositive ? '+' : ''}

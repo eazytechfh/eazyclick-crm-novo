@@ -60,7 +60,7 @@ function normalizarBusca(texto: string) {
 function TimerNegociacaoCard({ expiraEm, agora, statusAtendimento }: { expiraEm: string; agora: number; statusAtendimento: StatusAtendimento }) {
   if (statusAtendimento === 'finalizado') {
     return (
-      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
         Finalizado
       </span>
     );
@@ -69,7 +69,7 @@ function TimerNegociacaoCard({ expiraEm, agora, statusAtendimento }: { expiraEm:
   const restante = new Date(expiraEm).getTime() - agora;
   const vencido = restante <= 0;
   const iniciado = statusAtendimento === 'iniciado';
-  const cor = iniciado ? 'bg-green-50 text-green-700' : vencido ? 'bg-red-50 text-red-700' : 'bg-orange-50 text-orange-700';
+  const cor = iniciado ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400' : vencido ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400' : 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400';
 
   return (
     <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${cor}`}>
@@ -105,19 +105,19 @@ function LeadCard({ lead, onOpen, agora, statusAtendimento }: CardProps) {
       {...attributes}
       {...listeners}
       onClick={() => onOpen(lead)}
-      className="cursor-grab rounded-lg border border-gray-200 bg-white p-3 shadow-sm active:cursor-grabbing"
+      className="cursor-grab rounded-lg border border-gray-200 bg-card p-3 shadow-sm active:cursor-grabbing dark:border-gray-800"
     >
       <div className="mb-2 flex items-center gap-2">
         <Avatar name={lead.nome_lead} size={28} />
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{lead.nome_lead}</p>
-          <p className="truncate text-xs text-gray-500">{lead.telefone}</p>
+          <p className="truncate text-xs text-gray-500 dark:text-gray-400">{lead.telefone}</p>
         </div>
       </div>
       {lead.veiculo_interesse && (
-        <p className="truncate text-xs text-gray-600">Interesse: {lead.veiculo_interesse}</p>
+        <p className="truncate text-xs text-gray-600 dark:text-gray-300">Interesse: {lead.veiculo_interesse}</p>
       )}
-      {lead.vendedor && <p className="truncate text-xs text-gray-400">Vendedor: {lead.vendedor}</p>}
+      {lead.vendedor && <p className="truncate text-xs text-gray-400 dark:text-gray-500">Vendedor: {lead.vendedor}</p>}
       {mostrarTimer && (
         <TimerNegociacaoCard
           expiraEm={lead.negociacao_expira_em as string}
@@ -162,21 +162,21 @@ function Column({ id, label, color, configurada, leads, onOpenLead, agora, statu
   return (
     <div
       ref={setNodeRef}
-      className={`flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-gray-50 p-3 ${
-        isOver ? 'ring-2 ring-gray-400' : ''
+      className={`flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-xl bg-gray-50 p-3 dark:bg-gray-900 ${
+        isOver ? 'ring-2 ring-gray-400 dark:ring-gray-600' : ''
       }`}
     >
       <div className="mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-          <span className="text-sm font-semibold text-gray-800">{label}</span>
+          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">{label}</span>
           {!configurada && (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
               Legado
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-500">{leads.length}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{leads.length}</span>
       </div>
 
       <SortableContext items={leadsDaPagina.map((l) => l.id)} strategy={verticalListSortingStrategy}>
@@ -199,18 +199,18 @@ function Column({ id, label, color, configurada, leads, onOpenLead, agora, statu
             type="button"
             onClick={() => setPagina((p) => Math.max(1, p - 1))}
             disabled={paginaAtual === 1}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Anterior
           </button>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {paginaAtual} / {totalPaginas}
           </span>
           <button
             type="button"
             onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
             disabled={paginaAtual === totalPaginas}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             Próxima
           </button>
@@ -517,17 +517,17 @@ export default function PipelinePage() {
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Pipeline</h1>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           {leadsFiltrados.length} lead(s) exibido(s). Arraste os cards entre as etapas do funil
         </p>
       </div>
 
       {errorMessage && (
-        <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{errorMessage}</div>
+        <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-400">{errorMessage}</div>
       )}
 
       {erroEtapas && (
-        <div className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
+        <div className="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
           Nao foi possivel carregar as etapas configuradas. Usando o padrao local temporariamente.
         </div>
       )}
@@ -581,19 +581,19 @@ export default function PipelinePage() {
       )}
       {fechamentoPendente && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="fechar-venda-titulo">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h2 id="fechar-venda-titulo" className="text-xl font-bold">Concluir venda</h2>
-            <p className="mt-1 text-sm text-gray-500">Confirme os dados obrigatórios antes de fechar.</p>
-            <label className="mt-4 block text-sm">Nome
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+            <h2 id="fechar-venda-titulo" className="text-xl font-bold text-foreground">Concluir venda</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Confirme os dados obrigatórios antes de fechar.</p>
+            <label className="mt-4 block text-sm text-gray-700 dark:text-gray-300">Nome
               <input value={dadosFechamento.nome} onChange={(e) => setDadosFechamento((d) => ({ ...d, nome: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2" />
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:border-gray-700 dark:bg-white/5 dark:text-gray-100" />
             </label>
-            <label className="mt-3 block text-sm">Valor
+            <label className="mt-3 block text-sm text-gray-700 dark:text-gray-300">Valor
               <input type="number" min="0.01" step="0.01" value={dadosFechamento.valor}
                 onChange={(e) => setDadosFechamento((d) => ({ ...d, valor: e.target.value }))}
-                className="mt-1 w-full rounded-lg border px-3 py-2" />
+                className="mt-1 w-full rounded-lg border px-3 py-2 dark:border-gray-700 dark:bg-white/5 dark:text-gray-100" />
             </label>
-            <label className="mt-3 block text-sm">Veículo vendido</label>
+            <label className="mt-3 block text-sm text-gray-700 dark:text-gray-300">Veículo vendido</label>
             <div className="relative mt-1">
               <input
                 role="combobox"
@@ -609,14 +609,14 @@ export default function PipelinePage() {
                   setVeiculoId('');
                   setListaVeiculosAberta(true);
                 }}
-                className="w-full rounded-lg border px-3 py-2 pr-9"
+                className="w-full rounded-lg border px-3 py-2 pr-9 dark:border-gray-700 dark:bg-white/5 dark:text-gray-100"
               />
               <button
                 type="button"
                 aria-label="Abrir lista de veículos"
                 disabled={carregandoVeiculos}
                 onClick={() => setListaVeiculosAberta((aberta) => !aberta)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-gray-500"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-1 text-gray-500 dark:text-gray-400"
               >
                 ⌄
               </button>
@@ -624,7 +624,7 @@ export default function PipelinePage() {
                 <div
                   id="veiculos-venda-lista"
                   role="listbox"
-                  className="absolute left-0 top-full z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white p-1 shadow-xl"
+                  className="absolute left-0 top-full z-[100] mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-card p-1 shadow-xl dark:border-gray-700"
                 >
                   {filteredVehicles.length > 0 ? filteredVehicles.map((veiculo) => (
                     <button
@@ -638,24 +638,24 @@ export default function PipelinePage() {
                         setBuscaVeiculo(textoVeiculo(veiculo));
                         setListaVeiculosAberta(false);
                       }}
-                      className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-gray-100 ${
-                        veiculoId === String(veiculo.id) ? 'bg-primary/10 font-medium text-primary' : 'text-gray-800'
+                      className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                        veiculoId === String(veiculo.id) ? 'bg-primary/10 font-medium text-primary' : 'text-gray-800 dark:text-gray-200'
                       }`}
                     >
                       {textoVeiculo(veiculo)}
                     </button>
                   )) : (
-                    <p className="px-3 py-3 text-sm text-gray-500">Nenhum veículo encontrado.</p>
+                    <p className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">Nenhum veículo encontrado.</p>
                   )}
                 </div>
               )}
             </div>
             {!carregandoVeiculos && veiculosVenda.length === 0 && (
-              <p className="mt-2 text-xs text-red-600">Nenhum veículo disponível no estoque.</p>
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">Nenhum veículo disponível no estoque.</p>
             )}
-            {errosFechamento.length > 0 && <ul role="alert" className="mt-3 text-sm text-red-600">{errosFechamento.map((e) => <li key={e}>{e}</li>)}</ul>}
+            {errosFechamento.length > 0 && <ul role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{errosFechamento.map((e) => <li key={e}>{e}</li>)}</ul>}
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" disabled={salvandoFechamento} onClick={() => setFechamentoPendente(null)} className="rounded-lg border px-4 py-2">Cancelar</button>
+              <button type="button" disabled={salvandoFechamento} onClick={() => setFechamentoPendente(null)} className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Cancelar</button>
               <button type="button" disabled={salvandoFechamento} onClick={() => void confirmarFechamento()} className="rounded-lg bg-primary px-4 py-2 text-white">{salvandoFechamento ? 'Salvando...' : 'Concluir venda'}</button>
             </div>
           </div>

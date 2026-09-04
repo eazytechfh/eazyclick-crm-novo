@@ -1,6 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  darkMode: 'class',
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
@@ -8,11 +9,18 @@ const config: Config = {
         // Tokens de marca, configuráveis por cliente em Configurações > Aparência (admin_master).
         // Apontam para CSS variables (ver globals.css / RootLayout) em vez de hex fixo, para que
         // a troca de cor valha em runtime sem precisar recompilar o Tailwind.
-        background: 'var(--color-fundo)',
-        foreground: 'var(--color-texto)',
-        primary: 'var(--color-primaria)',
-        secondary: 'var(--color-secundaria)',
-        card: '#ffffff',
+        // background/foreground/primary/secondary apontam para as variantes "-ativa"/"-ativo" (ver
+        // globals.css): no claro são idênticas ao token de marca, no escuro o .dark as sobrescreve
+        // (fundo/texto para neutros fixos; primária/secundária clareadas via color-mix()). Usar o
+        // token de marca puro aqui faria o RootLayout (que injeta um <style> com a cor de branding
+        // depois deste arquivo no <head>) sobrescrever de volta o valor escuro.
+        background: 'var(--color-fundo-ativo)',
+        foreground: 'var(--color-texto-ativo)',
+        primary: 'var(--color-primaria-ativa)',
+        secondary: 'var(--color-secundaria-ativa)',
+        // Neutro de sistema (não é branding por cliente) apontando para CSS variable em vez de
+        // hex fixo, para permitir o tema escuro sem tocar no Tailwind config de novo.
+        card: 'var(--color-cartao)',
         // Tokens de status reutilizáveis para o pipeline de leads e badges em geral.
         // Cada estágio do funil mapeia para uma cor semântica consistente em toda a UI.
         status: {

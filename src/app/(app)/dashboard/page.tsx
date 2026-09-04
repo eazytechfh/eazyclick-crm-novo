@@ -284,10 +284,10 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Visão Geral de Leads</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {format(start, "dd 'de' MMM", { locale: ptBR })} – {format(end, "dd 'de' MMM", { locale: ptBR })}
             {updatedAt && (
-              <span className="ml-3 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+              <span className="ml-3 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
                 Atualizado {format(updatedAt, 'HH:mm')}
               </span>
@@ -312,7 +312,7 @@ export default function DashboardPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Carregando...</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Carregando...</p>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -340,13 +340,13 @@ export default function DashboardPage() {
               dotColor={dentroExpediente ? '#22c55e' : '#ef4444'}
             >
               <div className="mt-3">
-                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                   <div
                     className="h-full rounded-full bg-primary"
                     style={{ width: `${pctDentroExpediente.toFixed(0)}%` }}
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {pctDentroExpediente.toFixed(0)}% dos leads chegaram dentro do expediente (seg-sex, 8h-18h)
                 </p>
               </div>
@@ -358,7 +358,7 @@ export default function DashboardPage() {
             <p className="text-2xl font-bold text-foreground">
               {tempoMedioAtendimentoMin !== null ? `${tempoMedioAtendimentoMin.toFixed(0)} min` : 'Sem dados'}
             </p>
-            <p className="text-xs text-gray-500">Tempo médio entre a criação do lead e a primeira resposta registrada</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Tempo médio entre a criação do lead e a primeira resposta registrada</p>
           </div>
 
           <div className="rounded-xl bg-card p-5 shadow-sm">
@@ -393,11 +393,11 @@ export default function DashboardPage() {
                       // Clique reservado para futura navegação filtrada por vendedor na tela de Leads.
                     }}
                   >
-                    <div className="mb-1 flex justify-between text-xs text-gray-600">
+                    <div className="mb-1 flex justify-between text-xs text-gray-600 dark:text-gray-300">
                       <span>{item.vendedor}</span>
                       <span className="font-medium">{item.total}</span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                       <div
                         className="h-full rounded-full bg-blue-500"
                         style={{ width: `${(item.total / maxVendedor) * 100}%` }}
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                   </button>
                 ))}
                 {leadsPorVendedor.length === 0 && (
-                  <p className="text-sm text-gray-400">Nenhum lead no período.</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Nenhum lead no período.</p>
                 )}
               </div>
             </div>
@@ -414,7 +414,7 @@ export default function DashboardPage() {
             <div className="rounded-xl bg-card p-5 shadow-sm">
               <h2 className="mb-4 text-sm font-semibold text-foreground">Origem dos Leads</h2>
               {origemDosLeads.length === 0 ? (
-                <p className="text-sm text-gray-400">Nenhum lead no período.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">Nenhum lead no período.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
@@ -444,11 +444,11 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {leadsPorEstagio.map((item) => (
                   <div key={item.estagio}>
-                    <div className="mb-1 flex justify-between text-xs text-gray-600">
+                    <div className="mb-1 flex justify-between text-xs text-gray-600 dark:text-gray-300">
                       <span>{item.label}</span>
                       <span className="font-medium">{item.total}</span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${(item.total / maxEstagio) * 100}%`, backgroundColor: item.color }}
@@ -457,7 +457,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {leadsPorEstagio.length === 0 && (
-                  <p className="text-sm text-gray-400">Nenhum lead no período.</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Nenhum lead no período.</p>
                 )}
               </div>
             </div>
@@ -467,11 +467,11 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {veiculosMaisProcurados.map((item) => (
                   <div key={item.veiculo}>
-                    <div className="mb-1 flex justify-between text-xs text-gray-600">
+                    <div className="mb-1 flex justify-between text-xs text-gray-600 dark:text-gray-300">
                       <span>{item.veiculo}</span>
                       <span className="font-medium">{item.total}</span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                       <div
                         className="h-full rounded-full bg-orange-500"
                         style={{ width: `${(item.total / maxVeiculo) * 100}%` }}
@@ -480,7 +480,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {veiculosMaisProcurados.length === 0 && (
-                  <p className="text-sm text-gray-400">Nenhum veículo de interesse registrado.</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Nenhum veículo de interesse registrado.</p>
                 )}
               </div>
             </div>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import clsx from 'clsx';
 import { Avatar } from './Avatar';
+import { ThemeToggle } from './ThemeToggle';
 import { createClient } from '@/lib/supabase/client';
 
 const NAV_ITEMS = [
@@ -117,16 +118,19 @@ export function Sidebar({ userName, userCargo, logoUrl }: SidebarProps) {
   }
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-gray-200 bg-card">
-      <div className="px-5 py-6">
-        {logoUrl && (
-          <div className="mb-3 inline-flex h-16 max-w-[200px] items-center justify-center overflow-hidden rounded-xl">
-            {/* eslint-disable-next-line @next/next/no-img-element -- logo enviada pelo admin_master via upload, URL dinâmica de Storage */}
-            <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
-          </div>
-        )}
-        <h1 className="text-lg font-bold text-foreground">EazyClick</h1>
-        <p className="text-xs text-gray-500">CRM</p>
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-gray-200 bg-card dark:border-gray-800">
+      <div className="flex items-start justify-between px-5 py-6">
+        <div>
+          {logoUrl && (
+            <div className="mb-3 inline-flex h-16 max-w-[200px] items-center justify-center overflow-hidden rounded-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element -- logo enviada pelo admin_master via upload, URL dinâmica de Storage */}
+              <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+            </div>
+          )}
+          <h1 className="text-lg font-bold text-foreground">EazyClick</h1>
+          <p className="text-xs text-gray-500">CRM</p>
+        </div>
+        <ThemeToggle variant="icon" />
       </div>
 
       <nav className="flex-1 space-y-1 px-3">
@@ -140,7 +144,7 @@ export function Sidebar({ userName, userCargo, logoUrl }: SidebarProps) {
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
                 isActive
                   ? 'bg-primary text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
               )}
             >
               {item.icon}
@@ -150,13 +154,14 @@ export function Sidebar({ userName, userCargo, logoUrl }: SidebarProps) {
         })}
       </nav>
 
-      <div ref={menuRef} className="relative border-t border-gray-200 px-4 py-4">
+      <div ref={menuRef} className="relative border-t border-gray-200 px-4 py-4 dark:border-gray-800">
         {menuAberto && (
-          <div className="absolute bottom-full left-4 right-4 mb-2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="absolute bottom-full left-4 right-4 mb-2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-card">
+            <ThemeToggle variant="row" />
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
             >
               <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
                 <path
@@ -174,7 +179,7 @@ export function Sidebar({ userName, userCargo, logoUrl }: SidebarProps) {
         <button
           type="button"
           onClick={() => setMenuAberto((v) => !v)}
-          className="flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-gray-100"
+          className="flex w-full items-center gap-3 rounded-lg p-1 text-left hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <Avatar name={userName} />
           <div className="min-w-0 flex-1">
