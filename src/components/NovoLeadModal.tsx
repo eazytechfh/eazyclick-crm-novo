@@ -47,10 +47,12 @@ const FORM_INICIAL: FormState = {
 interface NovoLeadModalProps {
   onClose: () => void;
   onCreated: (lead: BaseDeLeads) => void;
+  /** Preenche o formulário com valores iniciais (ex: telefone vindo da aba Conversas). */
+  initialValues?: Partial<FormState>;
 }
 
-export function NovoLeadModal({ onClose, onCreated }: NovoLeadModalProps) {
-  const [form, setForm] = useState<FormState>(FORM_INICIAL);
+export function NovoLeadModal({ onClose, onCreated, initialValues }: NovoLeadModalProps) {
+  const [form, setForm] = useState<FormState>(() => ({ ...FORM_INICIAL, ...initialValues }));
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);

@@ -184,6 +184,7 @@ export interface Profile {
   nome: string | null;
   email: string;
   cargo: Cargo;
+  assinatura_mensagens_ativa: boolean;
   created_at: string;
   desativado: boolean;
 }
@@ -192,6 +193,8 @@ export interface AppSettings {
   id: number;
   uazapi_token: string | null;
   uazapi_base_url: string;
+  uazapi_webhook_secret: string | null;
+  uazapi_webhook_last_url: string | null;
   updated_at: string | null;
 }
 
@@ -211,4 +214,50 @@ export interface PipelineEtapa {
   is_inicial: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// =========================================================================
+// Conversas (WhatsApp via UAZAPI) — ver supabase/migrations/0019_conversas_uazapi.sql
+// =========================================================================
+export type ConversaDirecao = 'entrada' | 'saida';
+export type ConversaTipo = 'text' | 'image' | 'audio' | 'video' | 'document' | 'sticker';
+export type ConversaStatus = 'pendente' | 'enviando' | 'enviado' | 'entregue' | 'lido' | 'falhou';
+
+export interface ConversaAnexo {
+  mimeType: string;
+  fileName: string | null;
+  fileSize: number | null;
+  durationSeconds: number | null;
+  storagePath: string;
+}
+
+export interface ConversaMensagem {
+  id: number;
+  lead_id: number | null;
+  telefone_normalizado: string;
+  chat_jid: string;
+  direcao: ConversaDirecao;
+  conteudo: string | null;
+  tipo: ConversaTipo;
+  anexo: ConversaAnexo | null;
+  status: ConversaStatus;
+  provider_message_id: string | null;
+  provider_content_hash: string | null;
+  client_message_id: string | null;
+  enviado_por_id: string | null;
+  enviado_por_nome: string | null;
+  erro: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversaResumo {
+  telefone_normalizado: string;
+  chat_jid: string;
+  lead_id: number | null;
+  ultima_mensagem_id: number | null;
+  ultima_mensagem_preview: string | null;
+  ultima_mensagem_tipo: ConversaTipo | null;
+  ultima_mensagem_em: string | null;
+  total_mensagens: number;
 }
